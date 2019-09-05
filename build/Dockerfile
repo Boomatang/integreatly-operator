@@ -5,7 +5,7 @@ ENV OPERATOR=/usr/local/bin/integreatly-operator \
     USER_NAME=integreatly-operator
 
 # install operator binary
-COPY build/_output/bin/integreatly-operator ${OPERATOR}
+COPY integreatly-operator ${OPERATOR}
 
 COPY build/bin /usr/local/bin
 RUN  /usr/local/bin/user_setup
