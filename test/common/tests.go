@@ -49,6 +49,7 @@ var (
 		{"A06 - Verify PVC", TestPVClaims},
 		{"Verify servicemonitors are cloned in monitoring namespace and rolebindings are created", TestServiceMonitorsCloneAndRolebindingsExist},
 		{"C03 - Verify that alerting mechanism works", TestIntegreatlyAlertsMechanism},
+		{"Verify CRs will reset required fields but not added fields", TestResetCRs}, // These test can take ~5 minutes
 	}
 
 	DESTRUCTIVE_TESTS = []TestCase{
