@@ -4,8 +4,8 @@ import (
 	goctx "context"
 	"fmt"
 	enmasse "github.com/integr8ly/integreatly-operator/pkg/apis-products/enmasse/v1beta2"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"reflect"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sync"
 	"testing"
@@ -30,7 +30,7 @@ type compareResult2BR struct {
 }
 
 type resourceType interface {
-	crType() reflect.Type
+	crType() string
 	copyRequiredValues(t *testing.T, intContainer Container, phase string)
 	deleteExistingValues(t *testing.T, intContainer Container, phase string)
 	changeCRValues(t *testing.T, intContainer Container, phase string)
@@ -39,14 +39,18 @@ type resourceType interface {
 	checkDummyValuesStillExist(t *testing.T, intContainer Container, phase string)
 }
 
+//========================================================================================================
+// enmasse addressPlan
+//========================================================================================================
+
 type addressPlan2BR struct {
 	IntegreatlyName      string
 	IntegreatlyNamespace string
-	crKind               enmasse.AddressPlan
 }
 
-func (i *addressPlan2BR) crType() reflect.Type {
-	return reflect.TypeOf(i.crKind)
+func (i *addressPlan2BR) crType() string {
+
+	return "enmasse.AddressPlan"
 }
 
 func (i *addressPlan2BR) deleteExistingValues(t *testing.T, intContainer Container, phase string) {
@@ -141,6 +145,10 @@ func (i *addressPlan2BR) checkDummyValuesStillExist(t *testing.T, intContainer C
 	}
 }
 
+//========================================================================================================
+// Setting up the test
+//========================================================================================================
+
 func TestResetCRs2BR(t *testing.T, ctx *TestingContext) {
 	var wg sync.WaitGroup
 	addressPlanTest(t, ctx, &wg)
@@ -160,13 +168,13 @@ func addressPlanTest(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
 	for _, cr := range apl.Items {
 		wg.Add(1)
 		go addressPlanTestSetup(t, ctx, wg, cr)
+		break
 	}
 }
 
 func addressPlanTestSetup(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup, cr enmasse.AddressPlan) {
 	defer wg.Done()
 	ap := addressPlan2BR{}
-	ap.crKind = enmasse.AddressPlan{}
 	addressPlanContainer := &Container{}
 	addressPlanContainer.Put(cr)
 	modifyExistingValues(t, ctx, &ap, *addressPlanContainer)
@@ -174,7 +182,10 @@ func addressPlanTestSetup(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup,
 	//addNewCRValues(t, ctx, &ap, *addressPlanContainer)
 }
 
-// Needs to be generic
+//========================================================================================================
+// generic functions
+//========================================================================================================
+
 func modifyExistingValues(t *testing.T, ctx *TestingContext, rt resourceType, crData Container) {
 	phase := "Modify Existing CR Values"
 	rt.copyRequiredValues(t, crData, phase)
@@ -212,8 +223,7 @@ func addNewCRValues(t *testing.T, ctx *TestingContext, rt resourceType, crData C
 }
 
 func updateClusterCr(t *testing.T, ctx *TestingContext, rt resourceType, intContainer Container, phase string) {
-	//TODO refactor to be generic
-	cr, ok := intContainer.Get().(enmasse.AddressPlan)
+	cr, ok := getCR(intContainer, rt)
 	if !ok {
 		t.Log(cr)
 		t.Fatalf("%s : Unable to read CR from intContainer", phase)
@@ -222,7 +232,7 @@ func updateClusterCr(t *testing.T, ctx *TestingContext, rt resourceType, intCont
 	retryCount := 3
 	retry := true
 	for retry {
-		err := ctx.Client.Update(goctx.TODO(), &cr)
+		err := ctx.Client.Update(goctx.TODO(), cr)
 		if err != nil && retryCount == 0 {
 			retry = false
 			t.Log(cr)
@@ -237,13 +247,21 @@ func updateClusterCr(t *testing.T, ctx *TestingContext, rt resourceType, intCont
 	}
 }
 
+type CR struct {
+	runtime.Object
+	Name            string
+	Namespace       string
+	ResourceVersion string
+	Kind            string
+}
+
 func compareResultsAfterReconcile(t *testing.T, ctx *TestingContext, rt resourceType, intContainer Container, phase string) *[]compareResult2BR {
 	var results *[]compareResult2BR
 	retryCount := 3
 	forceRetry := true
 
-	//TODO refactor to be generic
-	cr, ok := intContainer.Get().(enmasse.AddressPlan)
+	//cr, ok := getCR(intContainer, rt)
+	cr, ok := intContainer.Get().(CR)
 	if !ok {
 		t.Log(cr)
 		t.Fatalf("%s : Unable to read CR from intContainer", phase)
@@ -251,7 +269,7 @@ func compareResultsAfterReconcile(t *testing.T, ctx *TestingContext, rt resource
 
 	for forceRetry {
 		// Force Retry is required to remove flaky test results after random updates
-		err := ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
+		err := ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, cr)
 		if err != nil {
 			t.Fatalf("%s : Fail to refresh the cr", phase)
 		}
@@ -280,7 +298,7 @@ func compareResultsAfterReconcile(t *testing.T, ctx *TestingContext, rt resource
 
 func compareAddedResultsAfterReconcile(t *testing.T, ctx *TestingContext, rt resourceType, intContainer Container, phase string) {
 	//TODO refactor to be generic
-	cr, ok := intContainer.Get().(enmasse.AddressPlan)
+	cr, ok := intContainer.Get().(CR)
 	if !ok {
 		t.Log(cr)
 		t.Fatalf("%s : Unable to read CR from intContainer", phase)
@@ -302,7 +320,7 @@ func compareAddedResultsAfterReconcile(t *testing.T, ctx *TestingContext, rt res
 }
 
 //TODO refactor to be generic
-func waitReconcilingCR(ctx *TestingContext, cr enmasse.AddressPlan) (done bool, err error) {
+func waitReconcilingCR(ctx *TestingContext, cr CR) (done bool, err error) {
 	resourceVersion := cr.ResourceVersion
 	err = wait.Poll(crRetryInterval, crTimeout, func() (done bool, err error) {
 		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
@@ -320,5 +338,15 @@ func waitReconcilingCR(ctx *TestingContext, cr enmasse.AddressPlan) (done bool, 
 		return false, err
 	} else {
 		return true, nil
+	}
+}
+
+func getCR(intContainer Container, rt resourceType) (interface{}, bool) {
+	switch {
+	case rt.crType() == "enmasse.AddressPlan":
+		cr, ok := intContainer.Get().(enmasse.AddressPlan)
+		return &cr, ok
+	default:
+		return nil, false
 	}
 }
