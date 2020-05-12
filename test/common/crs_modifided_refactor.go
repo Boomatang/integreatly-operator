@@ -40,6 +40,40 @@ type resourceType interface {
 }
 
 //========================================================================================================
+// Working on
+//========================================================================================================
+
+type crInterface interface {
+	// For any methods that are required in a common
+	getName() string
+	getNamespace() string
+	getResourceVersion() string
+	getKind() string
+	getCr() runtime.Object
+}
+
+type AddressSpaceCr struct {
+	// Add real CR as type
+	Cr enmasse.AddressPlan
+}
+
+func (cr AddressSpaceCr) getName() string {
+	return cr.Cr.Name
+}
+func (cr AddressSpaceCr) getNamespace() string {
+	return cr.Cr.Namespace
+}
+func (cr AddressSpaceCr) getResourceVersion() string {
+	return cr.Cr.ResourceVersion
+}
+func (cr AddressSpaceCr) getKind() string {
+	return cr.Cr.Kind
+}
+func (cr AddressSpaceCr) getCr() runtime.Object {
+	return &cr.Cr
+}
+
+//========================================================================================================
 // enmasse addressPlan
 //========================================================================================================
 
@@ -67,27 +101,29 @@ func (i *addressPlan2BR) deleteExistingValues(t *testing.T, intContainer Contain
 
 func (i *addressPlan2BR) copyRequiredValues(t *testing.T, intContainer Container, phase string) {
 
-	cr, ok := intContainer.Get().(enmasse.AddressPlan)
+	cr, ok := intContainer.Get().(AddressSpaceCr)
 	if !ok {
 		t.Fatalf("%s : Unable to read enmasse.AddressPlan from intContainer", phase)
 	}
 
-	ant := cr.GetAnnotations()
+	ant := cr.Cr.GetAnnotations()
 	i.IntegreatlyName = ant[integreatlyName]
 	i.IntegreatlyNamespace = ant[integreatlyNamespace]
 }
 
 func (i *addressPlan2BR) changeCRValues(t *testing.T, intContainer Container, phase string) {
 
-	cr, ok := intContainer.Get().(enmasse.AddressPlan)
+	cr, ok := intContainer.Get().(AddressSpaceCr)
 	if !ok {
 		t.Fatalf("%s : Unable to read enmasse.AddressPlan from intContainer", phase)
 	}
 
-	ant := cr.GetAnnotations()
+	ant := cr.Cr.GetAnnotations()
 	ant[integreatlyName] = "Bad Value"
 	ant[integreatlyNamespace] = "Bad Value"
-	cr.SetAnnotations(ant)
+	cr.Cr.SetAnnotations(ant)
+
+	//intContainer.Put(cr)
 }
 
 func (i *addressPlan2BR) compareValues(t *testing.T, intContainer Container, phase string) *[]compareResult2BR {
@@ -175,8 +211,9 @@ func addressPlanTest(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
 func addressPlanTestSetup(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup, cr enmasse.AddressPlan) {
 	defer wg.Done()
 	ap := addressPlan2BR{}
+	ascr := AddressSpaceCr{cr}
 	addressPlanContainer := &Container{}
-	addressPlanContainer.Put(cr)
+	addressPlanContainer.Put(ascr)
 	modifyExistingValues(t, ctx, &ap, *addressPlanContainer)
 	//deleteExistingValues(t, ctx, &ap, *addressPlanContainer)
 	//addNewCRValues(t, ctx, &ap, *addressPlanContainer)
@@ -214,15 +251,17 @@ func deleteExistingValues(t *testing.T, ctx *TestingContext, rt resourceType, cr
 	}
 }
 
-func addNewCRValues(t *testing.T, ctx *TestingContext, rt resourceType, crData Container) {
-	phase := "Adding New CR Values"
-	rt.addCRDummyValues(t, crData, phase)
-	updateClusterCr(t, ctx, rt, crData, phase)
-	compareAddedResultsAfterReconcile(t, ctx, rt, crData, phase)
-
-}
+//func addNewCRValues(t *testing.T, ctx *TestingContext, rt resourceType, crData Container) {
+//	phase := "Adding New CR Values"
+//	rt.addCRDummyValues(t, crData, phase)
+//	updateClusterCr(t, ctx, rt, crData, phase)
+//	compareAddedResultsAfterReconcile(t, ctx, rt, crData, phase)
+//}
 
 func updateClusterCr(t *testing.T, ctx *TestingContext, rt resourceType, intContainer Container, phase string) {
+	t.Log("Brake Point")
+	//cr := intContainer.Get().(crInterface)
+	//cr, ok := intContainer.Get().(crInterface)
 	cr, ok := getCR(intContainer, rt)
 	if !ok {
 		t.Log(cr)
@@ -232,7 +271,7 @@ func updateClusterCr(t *testing.T, ctx *TestingContext, rt resourceType, intCont
 	retryCount := 3
 	retry := true
 	for retry {
-		err := ctx.Client.Update(goctx.TODO(), cr)
+		err := ctx.Client.Update(goctx.TODO(), cr.getCr())
 		if err != nil && retryCount == 0 {
 			retry = false
 			t.Log(cr)
@@ -247,21 +286,14 @@ func updateClusterCr(t *testing.T, ctx *TestingContext, rt resourceType, intCont
 	}
 }
 
-type CR struct {
-	runtime.Object
-	Name            string
-	Namespace       string
-	ResourceVersion string
-	Kind            string
-}
-
 func compareResultsAfterReconcile(t *testing.T, ctx *TestingContext, rt resourceType, intContainer Container, phase string) *[]compareResult2BR {
 	var results *[]compareResult2BR
 	retryCount := 3
 	forceRetry := true
 
-	//cr, ok := getCR(intContainer, rt)
-	cr, ok := intContainer.Get().(CR)
+	cr, ok := getCR(intContainer, rt)
+	//cr, ok := intContainer.Get().(crInterface)
+	t.Log("Checking cr")
 	if !ok {
 		t.Log(cr)
 		t.Fatalf("%s : Unable to read CR from intContainer", phase)
@@ -269,15 +301,15 @@ func compareResultsAfterReconcile(t *testing.T, ctx *TestingContext, rt resource
 
 	for forceRetry {
 		// Force Retry is required to remove flaky test results after random updates
-		err := ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, cr)
+		err := ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.getName(), Namespace: cr.getNamespace()}, cr.getCr())
 		if err != nil {
 			t.Fatalf("%s : Fail to refresh the cr", phase)
 		}
 
-		t.Logf("%s : %s: count = %v, revison = %s", phase, cr.Name, retryCount, cr.ResourceVersion)
-		_, err = waitReconcilingCR(ctx, cr)
+		t.Logf("%s : %s: count = %v, revison = %s", phase, cr.getName(), retryCount, cr.getResourceVersion())
+		_, err = waitReconcilingCR(t, ctx, rt, intContainer)
 		if err != nil {
-			t.Fatalf("Modify Existing CR values : %s: %s:, %s", cr.Kind, cr.Name, err)
+			t.Fatalf("%s : %s: %s:, %s", phase, cr.getKind(), cr.getName(), err)
 		}
 		if len(intContainer) == 0 {
 			intContainer.Put(cr)
@@ -296,39 +328,46 @@ func compareResultsAfterReconcile(t *testing.T, ctx *TestingContext, rt resource
 	return results
 }
 
-func compareAddedResultsAfterReconcile(t *testing.T, ctx *TestingContext, rt resourceType, intContainer Container, phase string) {
-	//TODO refactor to be generic
-	cr, ok := intContainer.Get().(CR)
-	if !ok {
-		t.Log(cr)
-		t.Fatalf("%s : Unable to read CR from intContainer", phase)
-	}
-
-	err := ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-	if err != nil {
-		t.Fatalf("%s : Fail to refresh the cr", phase)
-	}
-
-	_, err = waitReconcilingCR(ctx, cr)
-	if err != nil {
-		t.Fatalf("Modify Existing CR values : %s: %s:, %s", cr.Kind, cr.Name, err)
-	}
-	if len(intContainer) == 0 {
-		intContainer.Put(cr)
-	}
-	rt.checkDummyValuesStillExist(t, intContainer, phase)
-}
+//func compareAddedResultsAfterReconcile(t *testing.T, ctx *TestingContext, rt resourceType, intContainer Container, phase string) {
+//	//TODO refactor to be generic
+//	cr, ok := intContainer.Get().(crInterface)
+//	if !ok {
+//		t.Log(cr)
+//		t.Fatalf("%s : Unable to read CR from intContainer", phase)
+//	}
+//
+//	err := ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.getName(), Namespace: cr.getNamespace()}, cr.getCr())
+//	if err != nil {
+//		t.Fatalf("%s : Fail to refresh the cr", phase)
+//	}
+//
+//	_, err = waitReconcilingCR(t, ctx, cr)
+//	if err != nil {
+//		t.Fatalf("%s : %s: %s:, %s",phase, cr.getKind(), cr.getName(), err)
+//	}
+//	if len(intContainer) == 0 {
+//		intContainer.Put(cr)
+//	}
+//	rt.checkDummyValuesStillExist(t, intContainer, phase)
+//}
 
 //TODO refactor to be generic
-func waitReconcilingCR(ctx *TestingContext, cr CR) (done bool, err error) {
-	resourceVersion := cr.ResourceVersion
+func waitReconcilingCR(t *testing.T, ctx *TestingContext, rt resourceType, intContainer Container) (done bool, err error) {
+	cr, ok := getCR(intContainer, rt)
+	t.Log("Checking cr")
+	if !ok {
+		t.Log(cr)
+		//t.Fatalf("%s : Unable to read CR from intContainer", phase)
+	}
+
+	resourceVersion := cr.getResourceVersion()
 	err = wait.Poll(crRetryInterval, crTimeout, func() (done bool, err error) {
-		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
+		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.getName(), Namespace: cr.getNamespace()}, cr.getCr())
 		if err != nil {
 			return false, err
 		}
-
-		if resourceVersion != cr.ResourceVersion {
+		t.Log(cr.getResourceVersion())
+		if resourceVersion != cr.getResourceVersion() {
 			return true, nil
 		} else {
 			return false, nil
@@ -341,11 +380,11 @@ func waitReconcilingCR(ctx *TestingContext, cr CR) (done bool, err error) {
 	}
 }
 
-func getCR(intContainer Container, rt resourceType) (interface{}, bool) {
+func getCR(intContainer Container, rt resourceType) (crInterface, bool) {
 	switch {
 	case rt.crType() == "enmasse.AddressPlan":
-		cr, ok := intContainer.Get().(enmasse.AddressPlan)
-		return &cr, ok
+		cr, ok := intContainer.Get().(AddressSpaceCr)
+		return cr, ok
 	default:
 		return nil, false
 	}
