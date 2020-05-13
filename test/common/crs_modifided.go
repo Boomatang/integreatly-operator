@@ -16,7 +16,7 @@ import (
 
 const (
 	crRetryInterval      = time.Second * 5
-	crTimeout            = time.Second * 60 * 2
+	crTimeout            = time.Second * 60 * 3
 	integreatlyName      = "integreatly-name"
 	integreatlyNamespace = "integreatly-namespace"
 	amqOnline            = "redhat-rhmi-amq-online"
