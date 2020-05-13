@@ -6,6 +6,7 @@ import (
 	enmasseadminv1beta1 "github.com/integr8ly/integreatly-operator/pkg/apis-products/enmasse/admin/v1beta1"
 	enmassev1beta1 "github.com/integr8ly/integreatly-operator/pkg/apis-products/enmasse/v1beta1"
 	enmasse "github.com/integr8ly/integreatly-operator/pkg/apis-products/enmasse/v1beta2"
+	modify_crs "github.com/integr8ly/integreatly-operator/test/common/modify-crs"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -25,14 +26,7 @@ const (
 	crFieldAdd           = true
 )
 
-type compareResult struct {
-	Type  string
-	Name  string
-	Key   string
-	Error string
-}
-
-func TestResetCRs(t *testing.T, ctx *TestingContext) {
+func TestResetCRsold(t *testing.T, ctx *TestingContext) {
 	var wg sync.WaitGroup
 	testAMQOnline(t, ctx, &wg)
 
@@ -45,7 +39,7 @@ func TestResetCRs(t *testing.T, ctx *TestingContext) {
 
 func testAMQOnline(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
 	testAddressSpacePlan(wg, t, ctx)
-	testAddressPlan(wg, t, ctx)
+	//testAddressPlan(wg, t, ctx)
 	testAuthenticationServiceCr(wg, t, ctx)
 	testBrokeredInfraConfigCr(wg, t, ctx)
 	testStandardInfraConfigCr(wg, t, ctx)
@@ -120,7 +114,7 @@ func (i *roleBindingCr) modifyExistingValues(t *testing.T, ctx *TestingContext, 
 		t.Fatal("Modify Existing CR values : Failed to update CR on cluster: ", err)
 	}
 
-	var results *[]compareResult
+	var results *[]modify_crs.CompareResult
 	count := 3
 	forceRetry := true
 	// Force Retry is required to remove flaky test results after random updates
@@ -168,7 +162,7 @@ func (i *roleBindingCr) deleteExistingValues(t *testing.T, ctx *TestingContext, 
 		t.Fatal("Deleting CR Values : Failed to update CR on cluster: ", err)
 	}
 
-	var results *[]compareResult
+	var results *[]modify_crs.CompareResult
 	count := 3
 	forceRetry := true
 	// Force Retry is required to remove flaky test results after random updates
@@ -283,11 +277,11 @@ func (i *roleBindingCr) waitReconcilingCR(ctx *TestingContext, cr rbacv1.RoleBin
 	}
 }
 
-func (i *roleBindingCr) compareValues(cr *rbacv1.RoleBinding) *[]compareResult {
-	var values []compareResult
+func (i *roleBindingCr) compareValues(cr *rbacv1.RoleBinding) *[]modify_crs.CompareResult {
+	var values []modify_crs.CompareResult
 	ant := cr.GetAnnotations()
 	if ant[integreatlyName] != i.IntegreatlyName {
-		values = append(values, compareResult{
+		values = append(values, modify_crs.CompareResult{
 			Type:  cr.Kind,
 			Name:  cr.Name,
 			Key:   "metadata.annotations.integreatly-name",
@@ -296,7 +290,7 @@ func (i *roleBindingCr) compareValues(cr *rbacv1.RoleBinding) *[]compareResult {
 	}
 
 	if ant[integreatlyNamespace] != i.IntegreatlyNamespace {
-		values = append(values, compareResult{
+		values = append(values, modify_crs.CompareResult{
 			Type:  cr.Kind,
 			Name:  cr.Name,
 			Key:   "metadata.annotations.integreatly-namespace",
@@ -307,7 +301,7 @@ func (i *roleBindingCr) compareValues(cr *rbacv1.RoleBinding) *[]compareResult {
 	for _, subject := range cr.Subjects {
 		err := i.compareSubjectName(subject.Name)
 		if err != nil {
-			values = append(values, compareResult{
+			values = append(values, modify_crs.CompareResult{
 				Type:  cr.Kind,
 				Name:  cr.Name,
 				Key:   "subjects.[].name",
@@ -317,7 +311,7 @@ func (i *roleBindingCr) compareValues(cr *rbacv1.RoleBinding) *[]compareResult {
 
 		err = i.compareSubjectKind(subject.Kind)
 		if err != nil {
-			values = append(values, compareResult{
+			values = append(values, modify_crs.CompareResult{
 				Type:  cr.Kind,
 				Name:  cr.Name,
 				Key:   "subjects.[].Kind",
@@ -438,7 +432,7 @@ func (i *roleCr) modifyExistingValues(t *testing.T, ctx *TestingContext, cr rbac
 		t.Fatal("Modify Existing CR values : Modify Existing CR values : Failed to update CR on cluster")
 	}
 
-	var results *[]compareResult
+	var results *[]modify_crs.CompareResult
 	count := 3
 	forceRetry := true
 	// Force Retry is required to remove flaky test results after random updates
@@ -486,7 +480,7 @@ func (i *roleCr) deleteExistingValues(t *testing.T, ctx *TestingContext, cr rbac
 		t.Fatal("Deleting CR Values : Failed to update CR on cluster")
 	}
 
-	var results *[]compareResult
+	var results *[]modify_crs.CompareResult
 	count := 3
 	forceRetry := true
 	// Force Retry is required to remove flaky test results after random updates
@@ -606,11 +600,11 @@ func (i *roleCr) waitReconcilingCR(ctx *TestingContext, cr rbacv1.Role) (done bo
 	}
 }
 
-func (i *roleCr) compareValues(cr *rbacv1.Role) *[]compareResult {
-	var values []compareResult
+func (i *roleCr) compareValues(cr *rbacv1.Role) *[]modify_crs.CompareResult {
+	var values []modify_crs.CompareResult
 	ant := cr.GetAnnotations()
 	if ant[integreatlyName] != i.IntegreatlyName {
-		values = append(values, compareResult{
+		values = append(values, modify_crs.CompareResult{
 			Type:  cr.Kind,
 			Name:  cr.Name,
 			Key:   "metadata.annotations.integreatly-name",
@@ -619,7 +613,7 @@ func (i *roleCr) compareValues(cr *rbacv1.Role) *[]compareResult {
 	}
 
 	if ant[integreatlyNamespace] != i.IntegreatlyNamespace {
-		values = append(values, compareResult{
+		values = append(values, modify_crs.CompareResult{
 			Type:  cr.Kind,
 			Name:  cr.Name,
 			Key:   "metadata.annotations.integreatly-namespace",
@@ -631,7 +625,7 @@ func (i *roleCr) compareValues(cr *rbacv1.Role) *[]compareResult {
 		for _, value := range rule.Resources {
 			err := i.compareResources(value)
 			if err != nil {
-				values = append(values, compareResult{
+				values = append(values, modify_crs.CompareResult{
 					Type:  cr.Kind,
 					Name:  cr.Name,
 					Key:   "Roles.Resources",
@@ -643,7 +637,7 @@ func (i *roleCr) compareValues(cr *rbacv1.Role) *[]compareResult {
 		for _, value := range rule.Verbs {
 			err := i.compareVerbs(value)
 			if err != nil {
-				values = append(values, compareResult{
+				values = append(values, modify_crs.CompareResult{
 					Type:  cr.Kind,
 					Name:  cr.Name,
 					Key:   "Roles.Verbs",
@@ -655,7 +649,7 @@ func (i *roleCr) compareValues(cr *rbacv1.Role) *[]compareResult {
 		for _, value := range rule.APIGroups {
 			err := i.compareAPIGroups(value)
 			if err != nil {
-				values = append(values, compareResult{
+				values = append(values, modify_crs.CompareResult{
 					Type:  cr.Kind,
 					Name:  cr.Name,
 					Key:   "Roles.APIGroup",
@@ -779,7 +773,7 @@ func (i *standardInfraConfig) modifyExistingValues(t *testing.T, ctx *TestingCon
 		t.Fatal("Modify Existing CR values : Failed to update CR on cluster")
 	}
 
-	var results *[]compareResult
+	var results *[]modify_crs.CompareResult
 	count := 3
 	forceRetry := true
 	for forceRetry {
@@ -825,7 +819,7 @@ func (i *standardInfraConfig) deleteExistingValues(t *testing.T, ctx *TestingCon
 		t.Fatal("Deleting CR Values : Failed to update CR on cluster")
 	}
 
-	var results *[]compareResult
+	var results *[]modify_crs.CompareResult
 	count := 3
 	forceRetry := true
 	// Force Retry is required to remove flaky test results after random updates
@@ -919,11 +913,11 @@ func (i *standardInfraConfig) waitReconcilingCR(ctx *TestingContext, cr enmassev
 	}
 }
 
-func (i *standardInfraConfig) compareValues(cr *enmassev1beta1.StandardInfraConfig) *[]compareResult {
-	var values []compareResult
+func (i *standardInfraConfig) compareValues(cr *enmassev1beta1.StandardInfraConfig) *[]modify_crs.CompareResult {
+	var values []modify_crs.CompareResult
 	ant := cr.GetAnnotations()
 	if ant[integreatlyName] != i.IntegreatlyName {
-		values = append(values, compareResult{
+		values = append(values, modify_crs.CompareResult{
 			Type:  cr.Kind,
 			Name:  cr.Name,
 			Key:   "metadata.annotations.integreatly-name",
@@ -932,7 +926,7 @@ func (i *standardInfraConfig) compareValues(cr *enmassev1beta1.StandardInfraConf
 	}
 
 	if ant[integreatlyNamespace] != i.IntegreatlyNamespace {
-		values = append(values, compareResult{
+		values = append(values, modify_crs.CompareResult{
 			Type:  cr.Kind,
 			Name:  cr.Name,
 			Key:   "metadata.annotations.integreatly-namespace",
@@ -1021,7 +1015,7 @@ func (i *brokeredInfraConfig) modifyExistingValues(t *testing.T, ctx *TestingCon
 		t.Fatal("Modify Existing CR values : Failed to update CR on cluster")
 	}
 
-	var results *[]compareResult
+	var results *[]modify_crs.CompareResult
 	count := 3
 	forceRetry := true
 	for forceRetry {
@@ -1069,7 +1063,7 @@ func (i *brokeredInfraConfig) deleteExistingValues(t *testing.T, ctx *TestingCon
 		t.Fatal("Deleting CR Values : Failed to update CR on cluster")
 	}
 
-	var results *[]compareResult
+	var results *[]modify_crs.CompareResult
 	count := 3
 	forceRetry := true
 	// Force Retry is required to remove flaky test results after random updates
@@ -1163,11 +1157,11 @@ func (i *brokeredInfraConfig) waitReconcilingCR(ctx *TestingContext, cr enmassev
 	}
 }
 
-func (i *brokeredInfraConfig) compareValues(cr *enmassev1beta1.BrokeredInfraConfig) *[]compareResult {
-	var values []compareResult
+func (i *brokeredInfraConfig) compareValues(cr *enmassev1beta1.BrokeredInfraConfig) *[]modify_crs.CompareResult {
+	var values []modify_crs.CompareResult
 	ant := cr.GetAnnotations()
 	if ant[integreatlyName] != i.IntegreatlyName {
-		values = append(values, compareResult{
+		values = append(values, modify_crs.CompareResult{
 			Type:  cr.Kind,
 			Name:  cr.Name,
 			Key:   "metadata.annotations.integreatly-name",
@@ -1176,7 +1170,7 @@ func (i *brokeredInfraConfig) compareValues(cr *enmassev1beta1.BrokeredInfraConf
 	}
 
 	if ant[integreatlyNamespace] != i.IntegreatlyNamespace {
-		values = append(values, compareResult{
+		values = append(values, modify_crs.CompareResult{
 			Type:  cr.Kind,
 			Name:  cr.Name,
 			Key:   "metadata.annotations.integreatly-namespace",
@@ -1275,7 +1269,7 @@ func (i *authenticationService) modifyExistingValues(t *testing.T, ctx *TestingC
 		t.Fatal("Modify Existing CR values : Failed to update CR on cluster")
 	}
 
-	var results *[]compareResult
+	var results *[]modify_crs.CompareResult
 	count := 3
 	forceRetry := true
 	for forceRetry {
@@ -1322,7 +1316,7 @@ func (i *authenticationService) deleteExistingValues(t *testing.T, ctx *TestingC
 		t.Fatal("Deleting CR Values : Failed to update CR on cluster")
 	}
 
-	var results *[]compareResult
+	var results *[]modify_crs.CompareResult
 	count := 3
 	forceRetry := true
 	// Force Retry is required to remove flaky test results after random updates
@@ -1440,11 +1434,11 @@ func (i *authenticationService) waitReconcilingCR(ctx *TestingContext, cr enmass
 	}
 }
 
-func (i *authenticationService) compareValues(cr *enmasseadminv1beta1.AuthenticationService) *[]compareResult {
-	var values []compareResult
+func (i *authenticationService) compareValues(cr *enmasseadminv1beta1.AuthenticationService) *[]modify_crs.CompareResult {
+	var values []modify_crs.CompareResult
 	ant := cr.GetAnnotations()
 	if ant[integreatlyName] != i.IntegreatlyName {
-		values = append(values, compareResult{
+		values = append(values, modify_crs.CompareResult{
 			Type:  cr.Kind,
 			Name:  cr.Name,
 			Key:   "metadata.annotations.integreatly-name",
@@ -1453,7 +1447,7 @@ func (i *authenticationService) compareValues(cr *enmasseadminv1beta1.Authentica
 	}
 
 	if ant[integreatlyNamespace] != i.IntegreatlyNamespace {
-		values = append(values, compareResult{
+		values = append(values, modify_crs.CompareResult{
 			Type:  cr.Kind,
 			Name:  cr.Name,
 			Key:   "metadata.annotations.integreatly-namespace",
@@ -1540,7 +1534,7 @@ func (i *addressSpacePlan) modifyExistingValues(t *testing.T, ctx *TestingContex
 		t.Fatal("Modify Existing CR values : Failed to update CR on cluster")
 	}
 
-	var results *[]compareResult
+	var results *[]modify_crs.CompareResult
 	count := 3
 	forceRetry := true
 	for forceRetry {
@@ -1588,7 +1582,7 @@ func (i *addressSpacePlan) deleteExistingValues(t *testing.T, ctx *TestingContex
 		t.Fatal("Deleting CR Values : Failed to update CR on cluster")
 	}
 
-	var results *[]compareResult
+	var results *[]modify_crs.CompareResult
 	count := 3
 	forceRetry := true
 	// Force Retry is required to remove flaky test results after random updates
@@ -1682,11 +1676,11 @@ func (i *addressSpacePlan) waitReconcilingCR(ctx *TestingContext, cr enmasse.Add
 	}
 }
 
-func (i *addressSpacePlan) compareValues(cr *enmasse.AddressSpacePlan) *[]compareResult {
-	var values []compareResult
+func (i *addressSpacePlan) compareValues(cr *enmasse.AddressSpacePlan) *[]modify_crs.CompareResult {
+	var values []modify_crs.CompareResult
 	ant := cr.GetAnnotations()
 	if ant[integreatlyName] != i.IntegreatlyName {
-		values = append(values, compareResult{
+		values = append(values, modify_crs.CompareResult{
 			Type:  cr.Kind,
 			Name:  cr.Name,
 			Key:   "metadata.annotations.integreatly-name",
@@ -1695,7 +1689,7 @@ func (i *addressSpacePlan) compareValues(cr *enmasse.AddressSpacePlan) *[]compar
 	}
 
 	if ant[integreatlyNamespace] != i.IntegreatlyNamespace {
-		values = append(values, compareResult{
+		values = append(values, modify_crs.CompareResult{
 			Type:  cr.Kind,
 			Name:  cr.Name,
 			Key:   "metadata.annotations.integreatly-namespace",
@@ -1730,244 +1724,244 @@ func (i *addressSpacePlan) addedValuesStillExist(t *testing.T, cr enmasse.Addres
 	}
 }
 
-//========================================================================================================
-// enmasse addressPlan
-//========================================================================================================
-type addressPlan struct {
-	IntegreatlyName      string
-	IntegreatlyNamespace string
-}
-
-func testAddressPlan(wg *sync.WaitGroup, t *testing.T, ctx *TestingContext) {
-	apl := &enmasse.AddressPlanList{}
-	listOpts := &k8sclient.ListOptions{
-		Namespace: amqOnline,
-	}
-	err := ctx.Client.List(goctx.TODO(), apl, listOpts)
-	if err != nil {
-		t.Fatal("addressPlan : Failed to get a list of address plan CR's from cluster")
-	}
-
-	for _, cr := range apl.Items {
-		wg.Add(1)
-		go setUpAddressPlan(wg, t, ctx, cr)
-	}
-
-}
-
-func setUpAddressPlan(wg *sync.WaitGroup, t *testing.T, ctx *TestingContext, cr enmasse.AddressPlan) {
-	defer wg.Done()
-	ap := addressPlan{}
-	ap.runTests(t, ctx, cr)
-}
-
-func (i *addressPlan) runTests(t *testing.T, ctx *TestingContext, cr enmasse.AddressPlan) {
-	if crFieldEdit {
-		i.modifyExistingValues(t, ctx, cr)
-	}
-	if crFieldDelete {
-		i.deleteExistingValues(t, ctx, cr)
-	}
-	if crFieldAdd {
-		i.addNewValues(t, ctx, cr)
-	}
-}
-
-func (i *addressPlan) modifyExistingValues(t *testing.T, ctx *TestingContext, cr enmasse.AddressPlan) {
-	i.copyRequiredValues(cr)
-	i.changeCRValues(cr)
-	err := ctx.Client.Update(goctx.TODO(), &cr)
-	if err != nil {
-		t.Fatal("Modify Existing CR values : Failed to update CR on cluster")
-	}
-
-	var results *[]compareResult
-	count := 3
-	forceRetry := true
-	for forceRetry {
-		// Force Retry is required to remove flaky test results after random updates
-		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-		if err != nil {
-			t.Fatalf("Modify Existing CR values : Fail to refresh the cr")
-		}
-
-		t.Logf("Modify Existing CR values : %s: count = %v, revison = %s", cr.Name, count, cr.ResourceVersion)
-		_, err = i.waitReconcilingCR(ctx, cr)
-		if err != nil {
-			t.Fatalf("Modify Existing CR values : %s: %s:, %s", cr.Kind, cr.Name, err)
-		}
-		results = i.compareValues(&cr)
-
-		if results == nil {
-			forceRetry = false
-			count -= 1
-		}
-		count -= 1
-		if count < 0 {
-			forceRetry = false
-		}
-	}
-
-	if results != nil {
-		for _, result := range *results {
-			t.Logf("Modify Existing CR values : %s: %s: %s: %s", result.Type, result.Name, result.Key, result.Error)
-		}
-		t.Fatal("Modify Existing CR values : Failed to reset the CR values")
-	}
-
-}
-
-func (i *addressPlan) deleteExistingValues(t *testing.T, ctx *TestingContext, cr enmasse.AddressPlan) {
-	err := ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-	if err != nil {
-		t.Fatal("Deleting CR Values : Failed to refresh CR")
-	}
-	i.copyRequiredValues(cr)
-	i.deleteCRValues(cr)
-	err = ctx.Client.Update(goctx.TODO(), &cr)
-	if err != nil {
-		t.Log(err)
-		t.Fatal("Deleting CR Values : Failed to update CR on cluster")
-	}
-
-	var results *[]compareResult
-	count := 3
-	forceRetry := true
-	// Force Retry is required to remove flaky test results after random updates
-	for forceRetry {
-		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-		if err != nil {
-			t.Fatalf("Deleting CR Values : Fail to refresh the cr")
-		}
-
-		t.Logf("Deleting CR Values : %s: count = %v, revison = %s", cr.Name, count, cr.ResourceVersion)
-		_, err = i.waitReconcilingCR(ctx, cr)
-		if err != nil {
-			t.Fatalf("Deleting CR Values : %s: %s:, %s", cr.Kind, cr.Name, err)
-		}
-		results = i.compareValues(&cr)
-
-		if results == nil {
-			forceRetry = false
-			count -= 1
-		}
-		count -= 1
-		if count < 0 {
-			forceRetry = false
-		}
-	}
-
-	if results != nil {
-		for _, result := range *results {
-			t.Logf("Deleting CR Values : %s: %s: %s: %s", result.Type, result.Name, result.Key, result.Error)
-		}
-		t.Fatal("Deleting CR Values : Failed to reset the CR values")
-	}
-}
-
-func (i *addressPlan) addNewValues(t *testing.T, ctx *TestingContext, cr enmasse.AddressPlan) {
-	err := ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-	if err != nil {
-		t.Fatal("Add New CR Values :  Failed to refresh CR")
-	}
-	i.addCRValue(cr)
-	err = ctx.Client.Update(goctx.TODO(), &cr)
-	if err != nil {
-		t.Fatal("Add New CR Values :  Failed to update CR on cluster")
-	}
-
-	// Refresh CR to get up-to-date version number
-	err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-	if err != nil {
-		t.Fatalf("Add New CR Values :  Fail to refresh the cr")
-	}
-
-	_, err = i.waitReconcilingCR(ctx, cr)
-	if err != nil && err.Error() != "timed out waiting for the condition" {
-		t.Fatal(err)
-	} else {
-		i.addedValuesStillExist(t, cr)
-	}
-}
-
-func (i *addressPlan) waitReconcilingCR(ctx *TestingContext, cr enmasse.AddressPlan) (done bool, err error) {
-	resourceVersion := cr.ResourceVersion
-	err = wait.Poll(crRetryInterval, crTimeout, func() (done bool, err error) {
-		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-		if err != nil {
-			return false, err
-		}
-
-		if resourceVersion != cr.ResourceVersion {
-			return true, nil
-		} else {
-			return false, nil
-		}
-	})
-	if err != nil {
-		return false, err
-	} else {
-		return true, nil
-	}
-}
-
-func (i *addressPlan) compareValues(cr *enmasse.AddressPlan) *[]compareResult {
-	var values []compareResult
-	ant := cr.GetAnnotations()
-	if ant[integreatlyName] != i.IntegreatlyName {
-		values = append(values, compareResult{
-			Type:  cr.Kind,
-			Name:  cr.Name,
-			Key:   "metadata.annotations.integreatly-name",
-			Error: fmt.Sprintf("%s is not equal to expected %s", ant[integreatlyName], i.IntegreatlyName),
-		})
-	}
-
-	if ant[integreatlyNamespace] != i.IntegreatlyNamespace {
-		values = append(values, compareResult{
-			Type:  cr.Kind,
-			Name:  cr.Name,
-			Key:   "metadata.annotations.integreatly-namespace",
-			Error: fmt.Sprintf("%s is not equal to expected %s", ant[integreatlyNamespace], i.IntegreatlyNamespace),
-		})
-	}
-
-	if len(values) > 0 {
-		return &values
-	} else {
-		return nil
-	}
-}
-
-func (i *addressPlan) copyRequiredValues(cr enmasse.AddressPlan) {
-	ant := cr.GetAnnotations()
-	i.IntegreatlyName = ant[integreatlyName]
-	i.IntegreatlyNamespace = ant[integreatlyNamespace]
-}
-
-func (i *addressPlan) changeCRValues(cr enmasse.AddressPlan) {
-	ant := cr.GetAnnotations()
-	ant[integreatlyName] = "Bad Value"
-	ant[integreatlyNamespace] = "Bad Value"
-	cr.SetAnnotations(ant)
-}
-
-func (i *addressPlan) deleteCRValues(cr enmasse.AddressPlan) {
-	ant := cr.GetAnnotations()
-	delete(ant, integreatlyName)
-	delete(ant, integreatlyNamespace)
-	cr.SetAnnotations(ant)
-}
-
-func (i *addressPlan) addCRValue(cr enmasse.AddressPlan) {
-	ant := cr.GetAnnotations()
-	ant["dummy-value"] = "dummy value"
-	cr.SetAnnotations(ant)
-}
-
-func (i *addressPlan) addedValuesStillExist(t *testing.T, cr enmasse.AddressPlan) {
-	ant := cr.GetAnnotations()
-	if ant["dummy-value"] != "dummy value" {
-		t.Fatal("Add New CR Values :  Added dummy values got reset.")
-	}
-}
+////========================================================================================================
+//// enmasse addressPlan
+////========================================================================================================
+//type addressPlan struct {
+//	IntegreatlyName      string
+//	IntegreatlyNamespace string
+//}
+//
+//func testAddressPlan(wg *sync.WaitGroup, t *testing.T, ctx *TestingContext) {
+//	apl := &enmasse.AddressPlanList{}
+//	listOpts := &k8sclient.ListOptions{
+//		Namespace: amqOnline,
+//	}
+//	err := ctx.Client.List(goctx.TODO(), apl, listOpts)
+//	if err != nil {
+//		t.Fatal("addressPlan : Failed to get a list of address plan CR's from cluster")
+//	}
+//
+//	for _, cr := range apl.Items {
+//		wg.Add(1)
+//		go setUpAddressPlan(wg, t, ctx, cr)
+//	}
+//
+//}
+//
+//func setUpAddressPlan(wg *sync.WaitGroup, t *testing.T, ctx *TestingContext, cr enmasse.AddressPlan) {
+//	defer wg.Done()
+//	ap := addressPlan{}
+//	ap.runTests(t, ctx, cr)
+//}
+//
+//func (i *addressPlan) runTests(t *testing.T, ctx *TestingContext, cr enmasse.AddressPlan) {
+//	if crFieldEdit {
+//		i.modifyExistingValues(t, ctx, cr)
+//	}
+//	if crFieldDelete {
+//		i.deleteExistingValues(t, ctx, cr)
+//	}
+//	if crFieldAdd {
+//		i.addNewValues(t, ctx, cr)
+//	}
+//}
+//
+//func (i *addressPlan) modifyExistingValues(t *testing.T, ctx *TestingContext, cr enmasse.AddressPlan) {
+//	i.copyRequiredValues(cr)
+//	i.changeCRValues(cr)
+//	err := ctx.Client.Update(goctx.TODO(), &cr)
+//	if err != nil {
+//		t.Fatal("Modify Existing CR values : Failed to update CR on cluster")
+//	}
+//
+//	var results *[]modify_crs.CompareResult
+//	count := 3
+//	forceRetry := true
+//	for forceRetry {
+//		// Force Retry is required to remove flaky test results after random updates
+//		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
+//		if err != nil {
+//			t.Fatalf("Modify Existing CR values : Fail to refresh the cr")
+//		}
+//
+//		t.Logf("Modify Existing CR values : %s: count = %v, revison = %s", cr.Name, count, cr.ResourceVersion)
+//		_, err = i.waitReconcilingCR(ctx, cr)
+//		if err != nil {
+//			t.Fatalf("Modify Existing CR values : %s: %s:, %s", cr.Kind, cr.Name, err)
+//		}
+//		results = i.compareValues(&cr)
+//
+//		if results == nil {
+//			forceRetry = false
+//			count -= 1
+//		}
+//		count -= 1
+//		if count < 0 {
+//			forceRetry = false
+//		}
+//	}
+//
+//	if results != nil {
+//		for _, result := range *results {
+//			t.Logf("Modify Existing CR values : %s: %s: %s: %s", result.Type, result.Name, result.Key, result.Error)
+//		}
+//		t.Fatal("Modify Existing CR values : Failed to reset the CR values")
+//	}
+//
+//}
+//
+//func (i *addressPlan) deleteExistingValues(t *testing.T, ctx *TestingContext, cr enmasse.AddressPlan) {
+//	err := ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
+//	if err != nil {
+//		t.Fatal("Deleting CR Values : Failed to refresh CR")
+//	}
+//	i.copyRequiredValues(cr)
+//	i.deleteCRValues(cr)
+//	err = ctx.Client.Update(goctx.TODO(), &cr)
+//	if err != nil {
+//		t.Log(err)
+//		t.Fatal("Deleting CR Values : Failed to update CR on cluster")
+//	}
+//
+//	var results *[]modify_crs.CompareResult
+//	count := 3
+//	forceRetry := true
+//	// Force Retry is required to remove flaky test results after random updates
+//	for forceRetry {
+//		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
+//		if err != nil {
+//			t.Fatalf("Deleting CR Values : Fail to refresh the cr")
+//		}
+//
+//		t.Logf("Deleting CR Values : %s: count = %v, revison = %s", cr.Name, count, cr.ResourceVersion)
+//		_, err = i.waitReconcilingCR(ctx, cr)
+//		if err != nil {
+//			t.Fatalf("Deleting CR Values : %s: %s:, %s", cr.Kind, cr.Name, err)
+//		}
+//		results = i.compareValues(&cr)
+//
+//		if results == nil {
+//			forceRetry = false
+//			count -= 1
+//		}
+//		count -= 1
+//		if count < 0 {
+//			forceRetry = false
+//		}
+//	}
+//
+//	if results != nil {
+//		for _, result := range *results {
+//			t.Logf("Deleting CR Values : %s: %s: %s: %s", result.Type, result.Name, result.Key, result.Error)
+//		}
+//		t.Fatal("Deleting CR Values : Failed to reset the CR values")
+//	}
+//}
+//
+//func (i *addressPlan) addNewValues(t *testing.T, ctx *TestingContext, cr enmasse.AddressPlan) {
+//	err := ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
+//	if err != nil {
+//		t.Fatal("Add New CR Values :  Failed to refresh CR")
+//	}
+//	i.addCRValue(cr)
+//	err = ctx.Client.Update(goctx.TODO(), &cr)
+//	if err != nil {
+//		t.Fatal("Add New CR Values :  Failed to update CR on cluster")
+//	}
+//
+//	// Refresh CR to get up-to-date version number
+//	err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
+//	if err != nil {
+//		t.Fatalf("Add New CR Values :  Fail to refresh the cr")
+//	}
+//
+//	_, err = i.waitReconcilingCR(ctx, cr)
+//	if err != nil && err.Error() != "timed out waiting for the condition" {
+//		t.Fatal(err)
+//	} else {
+//		i.addedValuesStillExist(t, cr)
+//	}
+//}
+//
+//func (i *addressPlan) waitReconcilingCR(ctx *TestingContext, cr enmasse.AddressPlan) (done bool, err error) {
+//	resourceVersion := cr.ResourceVersion
+//	err = wait.Poll(crRetryInterval, crTimeout, func() (done bool, err error) {
+//		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
+//		if err != nil {
+//			return false, err
+//		}
+//
+//		if resourceVersion != cr.ResourceVersion {
+//			return true, nil
+//		} else {
+//			return false, nil
+//		}
+//	})
+//	if err != nil {
+//		return false, err
+//	} else {
+//		return true, nil
+//	}
+//}
+//
+//func (i *addressPlan) compareValues(cr *enmasse.AddressPlan) *[]modify_crs.CompareResult {
+//	var values []modify_crs.CompareResult
+//	ant := cr.GetAnnotations()
+//	if ant[integreatlyName] != i.IntegreatlyName {
+//		values = append(values, modify_crs.CompareResult{
+//			Type:  cr.Kind,
+//			Name:  cr.Name,
+//			Key:   "metadata.annotations.integreatly-name",
+//			Error: fmt.Sprintf("%s is not equal to expected %s", ant[integreatlyName], i.IntegreatlyName),
+//		})
+//	}
+//
+//	if ant[integreatlyNamespace] != i.IntegreatlyNamespace {
+//		values = append(values, modify_crs.CompareResult{
+//			Type:  cr.Kind,
+//			Name:  cr.Name,
+//			Key:   "metadata.annotations.integreatly-namespace",
+//			Error: fmt.Sprintf("%s is not equal to expected %s", ant[integreatlyNamespace], i.IntegreatlyNamespace),
+//		})
+//	}
+//
+//	if len(values) > 0 {
+//		return &values
+//	} else {
+//		return nil
+//	}
+//}
+//
+//func (i *addressPlan) copyRequiredValues(cr enmasse.AddressPlan) {
+//	ant := cr.GetAnnotations()
+//	i.IntegreatlyName = ant[integreatlyName]
+//	i.IntegreatlyNamespace = ant[integreatlyNamespace]
+//}
+//
+//func (i *addressPlan) changeCRValues(cr enmasse.AddressPlan) {
+//	ant := cr.GetAnnotations()
+//	ant[integreatlyName] = "Bad Value"
+//	ant[integreatlyNamespace] = "Bad Value"
+//	cr.SetAnnotations(ant)
+//}
+//
+//func (i *addressPlan) deleteCRValues(cr enmasse.AddressPlan) {
+//	ant := cr.GetAnnotations()
+//	delete(ant, integreatlyName)
+//	delete(ant, integreatlyNamespace)
+//	cr.SetAnnotations(ant)
+//}
+//
+//func (i *addressPlan) addCRValue(cr enmasse.AddressPlan) {
+//	ant := cr.GetAnnotations()
+//	ant["dummy-value"] = "dummy value"
+//	cr.SetAnnotations(ant)
+//}
+//
+//func (i *addressPlan) addedValuesStillExist(t *testing.T, cr enmasse.AddressPlan) {
+//	ant := cr.GetAnnotations()
+//	if ant["dummy-value"] != "dummy value" {
+//		t.Fatal("Add New CR Values :  Added dummy values got reset.")
+//	}
+//}
