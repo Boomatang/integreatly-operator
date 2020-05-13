@@ -17,8 +17,41 @@ import (
 
 func TestResetCRs(t *testing.T, ctx *TestingContext) {
 	var wg sync.WaitGroup
+	addressSpacePlanTest(t, ctx, &wg)
 	addressPlanTest(t, ctx, &wg)
 	wg.Wait()
+}
+
+//========================================================================================================
+// enmasse addressSpacePlan
+//========================================================================================================
+
+func addressSpacePlanTest(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
+	apl := &enmasse.AddressSpacePlanList{}
+	listOpts := &k8sclient.ListOptions{
+		Namespace: modify_crs.AmqOnline,
+	}
+	err := ctx.Client.List(goctx.TODO(), apl, listOpts)
+	if err != nil {
+		t.Fatal("addressSpacePlan : Failed to get a list of address plan CR's from cluster")
+	}
+
+	for _, cr := range apl.Items {
+		wg.Add(1)
+		go addressSpacePlanTestSetup(t, ctx, wg, &cr)
+		break // This will need to be removed, issue with concurrence on writes
+	}
+}
+
+func addressSpacePlanTestSetup(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup, cr *enmasse.AddressSpacePlan) {
+	defer wg.Done()
+	ap := amq_online.AddressSpacePlan{}
+	apcr := amq_online.AddressSpacePlanCr{cr}
+	addressPlanContainer := &modify_crs.Container{}
+	addressPlanContainer.Put(apcr)
+	modifyExistingValues(t, ctx, &ap, addressPlanContainer)
+	deleteExistingValues(t, ctx, &ap, addressPlanContainer)
+	addNewCRValues(t, ctx, &ap, addressPlanContainer)
 }
 
 //========================================================================================================
@@ -205,8 +238,11 @@ func waitReconcilingCR(t *testing.T, ctx *TestingContext, rt modify_crs.Resource
 
 func getCR(intContainer *modify_crs.Container, rt modify_crs.ResourceType) (modify_crs.CrInterface, bool) {
 	switch {
-	case rt.CrType() == "enmasse.AddressPlan":
+	case rt.CrType() == amq_online.EnmasseAddressPlan:
 		cr, ok := intContainer.Get().(amq_online.AddressPlanCr)
+		return cr, ok
+	case rt.CrType() == amq_online.EnmasseAddressSpacePlan:
+		cr, ok := intContainer.Get().(amq_online.AddressSpacePlanCr)
 		return cr, ok
 	default:
 		return nil, false

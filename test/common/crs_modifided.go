@@ -5,7 +5,6 @@ import (
 	"fmt"
 	enmasseadminv1beta1 "github.com/integr8ly/integreatly-operator/pkg/apis-products/enmasse/admin/v1beta1"
 	enmassev1beta1 "github.com/integr8ly/integreatly-operator/pkg/apis-products/enmasse/v1beta1"
-	enmasse "github.com/integr8ly/integreatly-operator/pkg/apis-products/enmasse/v1beta2"
 	modify_crs "github.com/integr8ly/integreatly-operator/test/common/modify-crs"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -38,7 +37,7 @@ func TestResetCRsold(t *testing.T, ctx *TestingContext) {
 //========================================================================================================
 
 func testAMQOnline(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
-	testAddressSpacePlan(wg, t, ctx)
+	//testAddressSpacePlan(wg, t, ctx)
 	//testAddressPlan(wg, t, ctx)
 	testAuthenticationServiceCr(wg, t, ctx)
 	testBrokeredInfraConfigCr(wg, t, ctx)
@@ -1483,246 +1482,246 @@ func (i *authenticationService) addedValuesStillExist(t *testing.T, cr enmassead
 	}
 }
 
-//========================================================================================================
-// enmasse addressSpacePlan
-//========================================================================================================
-type addressSpacePlan struct {
-	IntegreatlyName      string
-	IntegreatlyNamespace string
-}
+////========================================================================================================
+//// enmasse addressSpacePlan
+////========================================================================================================
+//type addressSpacePlan struct {
+//	IntegreatlyName      string
+//	IntegreatlyNamespace string
+//}
+//
+//func testAddressSpacePlan(wg *sync.WaitGroup, t *testing.T, ctx *TestingContext) {
+//	aspl := &enmasse.AddressSpacePlanList{}
+//	listOpts := &k8sclient.ListOptions{
+//		Namespace: amqOnline,
+//	}
+//	err := ctx.Client.List(goctx.TODO(), aspl, listOpts)
+//	if err != nil {
+//		t.Fatal("addressSpacePlan : Failed to get a list of address space plan CR's from cluster")
+//	}
+//
+//	for _, cr := range aspl.Items {
+//		wg.Add(1)
+//		go setUpAddressSpacePlan(wg, t, ctx, cr)
+//	}
+//
+//}
+//
+//func setUpAddressSpacePlan(wg *sync.WaitGroup, t *testing.T, ctx *TestingContext, cr enmasse.AddressSpacePlan) {
+//	defer wg.Done()
+//	asp := addressSpacePlan{}
+//	asp.runTests(t, ctx, cr)
+//}
+//
+//func (i *addressSpacePlan) runTests(t *testing.T, ctx *TestingContext, cr enmasse.AddressSpacePlan) {
+//	if crFieldEdit {
+//		i.modifyExistingValues(t, ctx, cr)
+//	}
+//	if crFieldDelete {
+//		i.deleteExistingValues(t, ctx, cr)
+//	}
+//	if crFieldAdd {
+//		i.addNewValues(t, ctx, cr)
+//	}
+//}
+//
+//func (i *addressSpacePlan) modifyExistingValues(t *testing.T, ctx *TestingContext, cr enmasse.AddressSpacePlan) {
+//	i.copyRequiredValues(cr)
+//	i.changeCRValues(cr)
+//	err := ctx.Client.Update(goctx.TODO(), &cr)
+//	if err != nil {
+//		t.Fatal("Modify Existing CR values : Failed to update CR on cluster")
+//	}
+//
+//	var results *[]modify_crs.CompareResult
+//	count := 3
+//	forceRetry := true
+//	for forceRetry {
+//		// Force Retry is required to remove flaky test results after random updates
+//		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
+//		if err != nil {
+//			t.Fatalf("Modify Existing CR values : Fail to refresh the cr")
+//		}
+//
+//		t.Logf("Modify Existing CR values : %s: count = %v, revison = %s", cr.Name, count, cr.ResourceVersion)
+//		_, err = i.waitReconcilingCR(ctx, cr)
+//		if err != nil {
+//			t.Fatalf("Modify Existing CR values : %s: %s:, %s", cr.Kind, cr.Name, err)
+//		}
+//		results = i.compareValues(&cr)
+//
+//		if results == nil {
+//			forceRetry = false
+//			count -= 1
+//		}
+//		count -= 1
+//		if count < 0 {
+//			forceRetry = false
+//		}
+//	}
+//
+//	if results != nil {
+//		for _, result := range *results {
+//			t.Logf("Modify Existing CR values : %s: %s: %s: %s", result.Type, result.Name, result.Key, result.Error)
+//		}
+//		t.Fatal("Modify Existing CR values : Failed to reset the CR values")
+//	}
+//}
+//
+//func (i *addressSpacePlan) deleteExistingValues(t *testing.T, ctx *TestingContext, cr enmasse.AddressSpacePlan) {
+//	err := ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
+//	if err != nil {
+//		t.Fatal("Deleting CR Values : Failed to refresh CR")
+//	}
+//	i.copyRequiredValues(cr)
+//	i.deleteCRValues(cr)
+//	err = ctx.Client.Update(goctx.TODO(), &cr)
+//	if err != nil {
+//		t.Log(err)
+//		t.Fatal("Deleting CR Values : Failed to update CR on cluster")
+//	}
+//
+//	var results *[]modify_crs.CompareResult
+//	count := 3
+//	forceRetry := true
+//	// Force Retry is required to remove flaky test results after random updates
+//	for forceRetry {
+//		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
+//		if err != nil {
+//			t.Fatalf("Deleting CR Values : Fail to refresh the cr")
+//		}
+//
+//		t.Logf("Deleting CR Values : %s: count = %v, revison = %s", cr.Name, count, cr.ResourceVersion)
+//		_, err = i.waitReconcilingCR(ctx, cr)
+//		if err != nil {
+//			t.Fatalf("Deleting CR Values : %s: %s:, %s", cr.Kind, cr.Name, err)
+//		}
+//		results = i.compareValues(&cr)
+//
+//		if results == nil {
+//			forceRetry = false
+//			count -= 1
+//		}
+//		count -= 1
+//		if count < 0 {
+//			forceRetry = false
+//		}
+//	}
+//
+//	if results != nil {
+//		for _, result := range *results {
+//			t.Logf("Deleting CR Values : %s: %s: %s: %s", result.Type, result.Name, result.Key, result.Error)
+//		}
+//		t.Fatal("Deleting CR Values : Failed to reset the CR values")
+//	}
+//}
+//
+//func (i *addressSpacePlan) addNewValues(t *testing.T, ctx *TestingContext, cr enmasse.AddressSpacePlan) {
+//	err := ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
+//	if err != nil {
+//		t.Fatal("Add New CR Values :  Failed to refresh CR")
+//	}
+//	i.addCRValue(cr)
+//	err = ctx.Client.Update(goctx.TODO(), &cr)
+//	if err != nil {
+//		t.Fatal("Add New CR Values :  Failed to update CR on cluster")
+//	}
+//
+//	// Refresh CR to get up-to-date version number
+//	err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
+//	if err != nil {
+//		t.Fatalf("Add New CR Values :  Fail to refresh the cr")
+//	}
+//
+//	_, err = i.waitReconcilingCR(ctx, cr)
+//	if err != nil && err.Error() != "timed out waiting for the condition" {
+//		t.Fatal(err)
+//	} else {
+//		i.addedValuesStillExist(t, cr)
+//	}
+//}
 
-func testAddressSpacePlan(wg *sync.WaitGroup, t *testing.T, ctx *TestingContext) {
-	aspl := &enmasse.AddressSpacePlanList{}
-	listOpts := &k8sclient.ListOptions{
-		Namespace: amqOnline,
-	}
-	err := ctx.Client.List(goctx.TODO(), aspl, listOpts)
-	if err != nil {
-		t.Fatal("addressSpacePlan : Failed to get a list of address space plan CR's from cluster")
-	}
+//func (i *addressSpacePlan) copyRequiredValues(cr enmasse.AddressSpacePlan) {
+//	ant := cr.GetAnnotations()
+//	i.IntegreatlyName = ant[integreatlyName]
+//	i.IntegreatlyNamespace = ant[integreatlyNamespace]
+//}
 
-	for _, cr := range aspl.Items {
-		wg.Add(1)
-		go setUpAddressSpacePlan(wg, t, ctx, cr)
-	}
+//func (i *addressSpacePlan) changeCRValues(cr enmasse.AddressSpacePlan) {
+//	ant := cr.GetAnnotations()
+//	ant[integreatlyName] = "Bad Value"
+//	ant[integreatlyNamespace] = "Bad Value"
+//	cr.SetAnnotations(ant)
+////}
+//
+//func (i *addressSpacePlan) waitReconcilingCR(ctx *TestingContext, cr enmasse.AddressSpacePlan) (done bool, err error) {
+//	resourceVersion := cr.ResourceVersion
+//	err = wait.Poll(crRetryInterval, crTimeout, func() (done bool, err error) {
+//		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
+//		if err != nil {
+//			return false, err
+//		}
+//		if resourceVersion != cr.ResourceVersion {
+//
+//			return true, nil
+//		} else {
+//			return false, nil
+//		}
+//	})
+//	if err != nil {
+//		return false, err
+//	} else {
+//		return true, nil
+//	}
+//}
 
-}
+//func (i *addressSpacePlan) compareValues(cr *enmasse.AddressSpacePlan) *[]modify_crs.CompareResult {
+//	var values []modify_crs.CompareResult
+//	ant := cr.GetAnnotations()
+//	if ant[integreatlyName] != i.IntegreatlyName {
+//		values = append(values, modify_crs.CompareResult{
+//			Type:  cr.Kind,
+//			Name:  cr.Name,
+//			Key:   "metadata.annotations.integreatly-name",
+//			Error: fmt.Sprintf("%s is not equal to expected %s", ant[integreatlyName], i.IntegreatlyName),
+//		})
+//	}
+//
+//	if ant[integreatlyNamespace] != i.IntegreatlyNamespace {
+//		values = append(values, modify_crs.CompareResult{
+//			Type:  cr.Kind,
+//			Name:  cr.Name,
+//			Key:   "metadata.annotations.integreatly-namespace",
+//			Error: fmt.Sprintf("%s is not equal to expected %s", ant[integreatlyNamespace], i.IntegreatlyNamespace),
+//		})
+//	}
+//
+//	if len(values) > 0 {
+//		return &values
+//	} else {
+//		return nil
+//	}
+//}
 
-func setUpAddressSpacePlan(wg *sync.WaitGroup, t *testing.T, ctx *TestingContext, cr enmasse.AddressSpacePlan) {
-	defer wg.Done()
-	asp := addressSpacePlan{}
-	asp.runTests(t, ctx, cr)
-}
+//func (i *addressSpacePlan) deleteCRValues(cr enmasse.AddressSpacePlan) {
+//	ant := cr.GetAnnotations()
+//	delete(ant, integreatlyName)
+//	delete(ant, integreatlyNamespace)
+//	cr.SetAnnotations(ant)
+//}
 
-func (i *addressSpacePlan) runTests(t *testing.T, ctx *TestingContext, cr enmasse.AddressSpacePlan) {
-	if crFieldEdit {
-		i.modifyExistingValues(t, ctx, cr)
-	}
-	if crFieldDelete {
-		i.deleteExistingValues(t, ctx, cr)
-	}
-	if crFieldAdd {
-		i.addNewValues(t, ctx, cr)
-	}
-}
-
-func (i *addressSpacePlan) modifyExistingValues(t *testing.T, ctx *TestingContext, cr enmasse.AddressSpacePlan) {
-	i.copyRequiredValues(cr)
-	i.changeCRValues(cr)
-	err := ctx.Client.Update(goctx.TODO(), &cr)
-	if err != nil {
-		t.Fatal("Modify Existing CR values : Failed to update CR on cluster")
-	}
-
-	var results *[]modify_crs.CompareResult
-	count := 3
-	forceRetry := true
-	for forceRetry {
-		// Force Retry is required to remove flaky test results after random updates
-		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-		if err != nil {
-			t.Fatalf("Modify Existing CR values : Fail to refresh the cr")
-		}
-
-		t.Logf("Modify Existing CR values : %s: count = %v, revison = %s", cr.Name, count, cr.ResourceVersion)
-		_, err = i.waitReconcilingCR(ctx, cr)
-		if err != nil {
-			t.Fatalf("Modify Existing CR values : %s: %s:, %s", cr.Kind, cr.Name, err)
-		}
-		results = i.compareValues(&cr)
-
-		if results == nil {
-			forceRetry = false
-			count -= 1
-		}
-		count -= 1
-		if count < 0 {
-			forceRetry = false
-		}
-	}
-
-	if results != nil {
-		for _, result := range *results {
-			t.Logf("Modify Existing CR values : %s: %s: %s: %s", result.Type, result.Name, result.Key, result.Error)
-		}
-		t.Fatal("Modify Existing CR values : Failed to reset the CR values")
-	}
-}
-
-func (i *addressSpacePlan) deleteExistingValues(t *testing.T, ctx *TestingContext, cr enmasse.AddressSpacePlan) {
-	err := ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-	if err != nil {
-		t.Fatal("Deleting CR Values : Failed to refresh CR")
-	}
-	i.copyRequiredValues(cr)
-	i.deleteCRValues(cr)
-	err = ctx.Client.Update(goctx.TODO(), &cr)
-	if err != nil {
-		t.Log(err)
-		t.Fatal("Deleting CR Values : Failed to update CR on cluster")
-	}
-
-	var results *[]modify_crs.CompareResult
-	count := 3
-	forceRetry := true
-	// Force Retry is required to remove flaky test results after random updates
-	for forceRetry {
-		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-		if err != nil {
-			t.Fatalf("Deleting CR Values : Fail to refresh the cr")
-		}
-
-		t.Logf("Deleting CR Values : %s: count = %v, revison = %s", cr.Name, count, cr.ResourceVersion)
-		_, err = i.waitReconcilingCR(ctx, cr)
-		if err != nil {
-			t.Fatalf("Deleting CR Values : %s: %s:, %s", cr.Kind, cr.Name, err)
-		}
-		results = i.compareValues(&cr)
-
-		if results == nil {
-			forceRetry = false
-			count -= 1
-		}
-		count -= 1
-		if count < 0 {
-			forceRetry = false
-		}
-	}
-
-	if results != nil {
-		for _, result := range *results {
-			t.Logf("Deleting CR Values : %s: %s: %s: %s", result.Type, result.Name, result.Key, result.Error)
-		}
-		t.Fatal("Deleting CR Values : Failed to reset the CR values")
-	}
-}
-
-func (i *addressSpacePlan) addNewValues(t *testing.T, ctx *TestingContext, cr enmasse.AddressSpacePlan) {
-	err := ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-	if err != nil {
-		t.Fatal("Add New CR Values :  Failed to refresh CR")
-	}
-	i.addCRValue(cr)
-	err = ctx.Client.Update(goctx.TODO(), &cr)
-	if err != nil {
-		t.Fatal("Add New CR Values :  Failed to update CR on cluster")
-	}
-
-	// Refresh CR to get up-to-date version number
-	err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-	if err != nil {
-		t.Fatalf("Add New CR Values :  Fail to refresh the cr")
-	}
-
-	_, err = i.waitReconcilingCR(ctx, cr)
-	if err != nil && err.Error() != "timed out waiting for the condition" {
-		t.Fatal(err)
-	} else {
-		i.addedValuesStillExist(t, cr)
-	}
-}
-
-func (i *addressSpacePlan) copyRequiredValues(cr enmasse.AddressSpacePlan) {
-	ant := cr.GetAnnotations()
-	i.IntegreatlyName = ant[integreatlyName]
-	i.IntegreatlyNamespace = ant[integreatlyNamespace]
-}
-
-func (i *addressSpacePlan) changeCRValues(cr enmasse.AddressSpacePlan) {
-	ant := cr.GetAnnotations()
-	ant[integreatlyName] = "Bad Value"
-	ant[integreatlyNamespace] = "Bad Value"
-	cr.SetAnnotations(ant)
-}
-
-func (i *addressSpacePlan) waitReconcilingCR(ctx *TestingContext, cr enmasse.AddressSpacePlan) (done bool, err error) {
-	resourceVersion := cr.ResourceVersion
-	err = wait.Poll(crRetryInterval, crTimeout, func() (done bool, err error) {
-		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-		if err != nil {
-			return false, err
-		}
-		if resourceVersion != cr.ResourceVersion {
-
-			return true, nil
-		} else {
-			return false, nil
-		}
-	})
-	if err != nil {
-		return false, err
-	} else {
-		return true, nil
-	}
-}
-
-func (i *addressSpacePlan) compareValues(cr *enmasse.AddressSpacePlan) *[]modify_crs.CompareResult {
-	var values []modify_crs.CompareResult
-	ant := cr.GetAnnotations()
-	if ant[integreatlyName] != i.IntegreatlyName {
-		values = append(values, modify_crs.CompareResult{
-			Type:  cr.Kind,
-			Name:  cr.Name,
-			Key:   "metadata.annotations.integreatly-name",
-			Error: fmt.Sprintf("%s is not equal to expected %s", ant[integreatlyName], i.IntegreatlyName),
-		})
-	}
-
-	if ant[integreatlyNamespace] != i.IntegreatlyNamespace {
-		values = append(values, modify_crs.CompareResult{
-			Type:  cr.Kind,
-			Name:  cr.Name,
-			Key:   "metadata.annotations.integreatly-namespace",
-			Error: fmt.Sprintf("%s is not equal to expected %s", ant[integreatlyNamespace], i.IntegreatlyNamespace),
-		})
-	}
-
-	if len(values) > 0 {
-		return &values
-	} else {
-		return nil
-	}
-}
-
-func (i *addressSpacePlan) deleteCRValues(cr enmasse.AddressSpacePlan) {
-	ant := cr.GetAnnotations()
-	delete(ant, integreatlyName)
-	delete(ant, integreatlyNamespace)
-	cr.SetAnnotations(ant)
-}
-
-func (i *addressSpacePlan) addCRValue(cr enmasse.AddressSpacePlan) {
-	ant := cr.GetAnnotations()
-	ant["dummy-value"] = "dummy value"
-	cr.SetAnnotations(ant)
-}
-
-func (i *addressSpacePlan) addedValuesStillExist(t *testing.T, cr enmasse.AddressSpacePlan) {
-	ant := cr.GetAnnotations()
-	if ant["dummy-value"] != "dummy value" {
-		t.Fatal("Add New CR Values :  Added dummy values got reset.")
-	}
-}
+//func (i *addressSpacePlan) addCRValue(cr enmasse.AddressSpacePlan) {
+//	ant := cr.GetAnnotations()
+//	ant["dummy-value"] = "dummy value"
+//	cr.SetAnnotations(ant)
+//}
+//
+//func (i *addressSpacePlan) addedValuesStillExist(t *testing.T, cr enmasse.AddressSpacePlan) {
+//	ant := cr.GetAnnotations()
+//	if ant["dummy-value"] != "dummy value" {
+//		t.Fatal("Add New CR Values :  Added dummy values got reset.")
+//	}
+//}
 
 ////========================================================================================================
 //// enmasse addressPlan
