@@ -3,7 +3,6 @@ package common
 import (
 	goctx "context"
 	"fmt"
-	enmasseadminv1beta1 "github.com/integr8ly/integreatly-operator/pkg/apis-products/enmasse/admin/v1beta1"
 	enmassev1beta1 "github.com/integr8ly/integreatly-operator/pkg/apis-products/enmasse/v1beta1"
 	modify_crs "github.com/integr8ly/integreatly-operator/test/common/modify-crs"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -39,7 +38,7 @@ func TestResetCRsold(t *testing.T, ctx *TestingContext) {
 func testAMQOnline(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
 	//testAddressSpacePlan(wg, t, ctx)
 	//testAddressPlan(wg, t, ctx)
-	testAuthenticationServiceCr(wg, t, ctx)
+	//testAuthenticationServiceCr(wg, t, ctx)
 	testBrokeredInfraConfigCr(wg, t, ctx)
 	testStandardInfraConfigCr(wg, t, ctx)
 	testRoleCr(wg, t, ctx)

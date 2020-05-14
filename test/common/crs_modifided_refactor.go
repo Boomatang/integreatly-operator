@@ -13,6 +13,24 @@ import (
 )
 
 //========================================================================================================
+// Put down notes
+//========================================================================================================
+// - There is an issue with running as go routines trying to write
+// - authenticationService checks seem to be given a time out failure on the second cr.
+// - All the types that are still in the crs_modifided.go still need to be moved here
+// - check the jira ticket for changes
+// - insure all types that are in the test case is covered.
+// - make a list of types that test cover
+// - normal cr check takes ~5 mins
+// - long cr check around ~10 mins
+// - See the format the Brian made https://github.com/briangallagher/integreatly-operator/blob/INTLY-6123-jim/test/common/crs_modified_brian.go
+// - Check his function names
+// - How the checking that data changed is handled
+func compileBrake()  {
+	compile brake
+}
+
+//========================================================================================================
 // Setting up the test
 //========================================================================================================
 
@@ -64,7 +82,7 @@ func addressSpacePlanTest(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup)
 
 	for _, cr := range aspl.Items {
 		wg.Add(1)
-		addressSpacePlanTestSetup(t, ctx, wg, &cr)
+		go addressSpacePlanTestSetup(t, ctx, wg, &cr)
 		break // This will need to be removed, issue with concurrence on writes
 	}
 }
@@ -117,6 +135,8 @@ func runCrTest(t *testing.T, ctx *TestingContext, rt modify_crs.ResourceType, cr
 
 func modifyExistingValues(t *testing.T, ctx *TestingContext, rt modify_crs.ResourceType, crData *modify_crs.Container) {
 	phase := "Modify Existing CR Values"
+	refreshCR(t, ctx, rt, crData, phase)
+
 	rt.CopyRequiredValues(t, crData, phase)
 	rt.ChangeCRValues(t, crData, phase)
 	updateClusterCr(t, ctx, rt, crData, phase)
@@ -131,6 +151,8 @@ func modifyExistingValues(t *testing.T, ctx *TestingContext, rt modify_crs.Resou
 
 func deleteExistingValues(t *testing.T, ctx *TestingContext, rt modify_crs.ResourceType, crData *modify_crs.Container) {
 	phase := "Delete Existing CR Values"
+	refreshCR(t, ctx, rt, crData, phase)
+
 	rt.CopyRequiredValues(t, crData, phase)
 	rt.DeleteExistingValues(t, crData, phase)
 	updateClusterCr(t, ctx, rt, crData, phase)
@@ -145,6 +167,8 @@ func deleteExistingValues(t *testing.T, ctx *TestingContext, rt modify_crs.Resou
 
 func addNewCRValues(t *testing.T, ctx *TestingContext, rt modify_crs.ResourceType, crData *modify_crs.Container) {
 	phase := "Adding New CR Values"
+	refreshCR(t, ctx, rt, crData, phase)
+
 	AddDummyCRValues(t, rt, crData, phase)
 	updateClusterCr(t, ctx, rt, crData, phase)
 	compareAddedResultsAfterReconcile(t, ctx, rt, crData, phase)
@@ -227,6 +251,7 @@ func compareAddedResultsAfterReconcile(t *testing.T, ctx *TestingContext, rt mod
 		t.Fatalf("%s : Fail to refresh the cr", phase)
 	}
 	intContainer.Put(cr)
+
 	_, err = waitReconcilingCR(t, ctx, rt, intContainer)
 	if err != nil && err.Error() != "timed out waiting for the condition" {
 		t.Fatalf("%s : %s: %s:, %s", phase, cr.GetKind(), cr.GetName(), err)
@@ -283,6 +308,20 @@ func CheckDummyValuesStillExist(t *testing.T, rt modify_crs.ResourceType, intCon
 		t.Fatal("Add New CR Values :  Added dummy values got reset.")
 	}
 
+	intContainer.Put(cr)
+}
+
+func refreshCR(t *testing.T, ctx *TestingContext, rt modify_crs.ResourceType, intContainer *modify_crs.Container, phase string){
+	cr, ok := getCR(intContainer, rt)
+	if !ok {
+		t.Log(cr)
+		t.Fatalf("%s : Unable to read CR from intContainer", phase)
+	}
+
+	err := ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.GetName(), Namespace: cr.GetNamespace()}, cr.GetCr())
+	if err != nil {
+		t.Fatalf("%s : Fail to refresh the cr", phase)
+	}
 	intContainer.Put(cr)
 }
 
