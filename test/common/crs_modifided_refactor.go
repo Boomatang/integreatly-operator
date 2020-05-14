@@ -2,6 +2,7 @@ package common
 
 import (
 	goctx "context"
+	enmasseadminv1beta1 "github.com/integr8ly/integreatly-operator/pkg/apis-products/enmasse/admin/v1beta1"
 	enmasse "github.com/integr8ly/integreatly-operator/pkg/apis-products/enmasse/v1beta2"
 	"github.com/integr8ly/integreatly-operator/test/common/modify-crs"
 	"github.com/integr8ly/integreatly-operator/test/common/modify-crs/amq-online"
@@ -17,9 +18,37 @@ import (
 
 func TestResetCRs(t *testing.T, ctx *TestingContext) {
 	var wg sync.WaitGroup
+	authenticationServiceTest(t, ctx, &wg)
 	addressSpacePlanTest(t, ctx, &wg)
-	//addressPlanTest(t, ctx, &wg)
+	addressPlanTest(t, ctx, &wg)
 	wg.Wait()
+}
+
+//========================================================================================================
+// enmasseadminv1beta1 AuthenticationService
+//========================================================================================================
+
+func authenticationServiceTest(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
+	asl := &enmasseadminv1beta1.AuthenticationServiceList{}
+	err := ctx.Client.List(goctx.TODO(), asl, amq_online.ListOpts)
+	if err != nil {
+		t.Fatal("addressSpacePlan : Failed to get a list of address plan CR's from cluster")
+	}
+
+	for _, cr := range asl.Items {
+		wg.Add(1)
+		authenticationServiceTestSetup(t, ctx, wg, &cr)
+		// Must check all cr's There is two or more configurations been checked
+	}
+}
+
+func authenticationServiceTestSetup(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup, cr *enmasseadminv1beta1.AuthenticationService) {
+	defer wg.Done()
+	as := amq_online.AuthenticationServiceReference{}
+	ascr := amq_online.AuthenticationServiceCrWrapper{cr}
+	authenticationServiceContainer := &modify_crs.Container{}
+	authenticationServiceContainer.Put(ascr)
+	runCrTest(t, ctx, &as, authenticationServiceContainer)
 }
 
 //========================================================================================================
@@ -258,12 +287,15 @@ func CheckDummyValuesStillExist(t *testing.T, rt modify_crs.ResourceType, intCon
 }
 
 func getCR(intContainer *modify_crs.Container, rt modify_crs.ResourceType) (modify_crs.CrInterface, bool) {
-	switch {
-	case rt.CrType() == amq_online.EnmasseAddressPlan:
+	switch rt.CrType() {
+	case amq_online.EnmasseAddressPlan:
 		cr, ok := intContainer.Get().(amq_online.AddressPlanCrWrapper)
 		return cr, ok
-	case rt.CrType() == amq_online.EnmasseAddressSpacePlan:
+	case amq_online.EnmasseAddressSpacePlan:
 		cr, ok := intContainer.Get().(amq_online.AddressSpacePlanCrWrapper)
+		return cr, ok
+	case amq_online.EnmasseAuthenticationService:
+		cr, ok := intContainer.Get().(amq_online.AuthenticationServiceCrWrapper)
 		return cr, ok
 	default:
 		return nil, false

@@ -6,8 +6,9 @@ import (
 )
 
 const (
-	EnmasseAddressPlan      = "enmasse.AddressPlanReference"
-	EnmasseAddressSpacePlan = "enmasse.AddressSpacePlanReference"
+	EnmasseAddressPlan           = "enmasse.AddressPlanReference"
+	EnmasseAddressSpacePlan      = "enmasse.AddressSpacePlanReference"
+	EnmasseAuthenticationService = "enmasseadminv1beta1.AuthenticationService"
 )
 
 var ListOpts = &k8sclient.ListOptions{
