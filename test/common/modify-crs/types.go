@@ -38,8 +38,6 @@ type ResourceType interface {
 	DeleteExistingValues(t *testing.T, intContainer *Container, phase string)
 	ChangeCRValues(t *testing.T, intContainer *Container, phase string)
 	CompareValues(t *testing.T, intContainer *Container, phase string) *[]CompareResult
-	AddCRDummyValues(t *testing.T, intContainer *Container, phase string)
-	CheckDummyValuesStillExist(t *testing.T, intContainer *Container, phase string)
 }
 
 type CrInterface interface {
@@ -49,4 +47,6 @@ type CrInterface interface {
 	GetResourceVersion() string
 	GetKind() string
 	GetCr() runtime.Object
+	GetAnnotations() map[string]string
+	SetAnnotations(annotations map[string]string)
 }

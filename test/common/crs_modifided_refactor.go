@@ -18,7 +18,7 @@ import (
 func TestResetCRs(t *testing.T, ctx *TestingContext) {
 	var wg sync.WaitGroup
 	addressSpacePlanTest(t, ctx, &wg)
-	addressPlanTest(t, ctx, &wg)
+	//addressPlanTest(t, ctx, &wg)
 	wg.Wait()
 }
 
@@ -27,31 +27,26 @@ func TestResetCRs(t *testing.T, ctx *TestingContext) {
 //========================================================================================================
 
 func addressSpacePlanTest(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
-	apl := &enmasse.AddressSpacePlanList{}
-	listOpts := &k8sclient.ListOptions{
-		Namespace: modify_crs.AmqOnline,
-	}
-	err := ctx.Client.List(goctx.TODO(), apl, listOpts)
+	aspl := &enmasse.AddressSpacePlanList{}
+	err := ctx.Client.List(goctx.TODO(), aspl, amq_online.ListOpts)
 	if err != nil {
 		t.Fatal("addressSpacePlan : Failed to get a list of address plan CR's from cluster")
 	}
 
-	for _, cr := range apl.Items {
+	for _, cr := range aspl.Items {
 		wg.Add(1)
-		go addressSpacePlanTestSetup(t, ctx, wg, &cr)
+		addressSpacePlanTestSetup(t, ctx, wg, &cr)
 		break // This will need to be removed, issue with concurrence on writes
 	}
 }
 
 func addressSpacePlanTestSetup(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup, cr *enmasse.AddressSpacePlan) {
 	defer wg.Done()
-	ap := amq_online.AddressSpacePlan{}
-	apcr := amq_online.AddressSpacePlanCr{cr}
-	addressPlanContainer := &modify_crs.Container{}
-	addressPlanContainer.Put(apcr)
-	modifyExistingValues(t, ctx, &ap, addressPlanContainer)
-	deleteExistingValues(t, ctx, &ap, addressPlanContainer)
-	addNewCRValues(t, ctx, &ap, addressPlanContainer)
+	asp := amq_online.AddressSpacePlanReference{}
+	aspcr := amq_online.AddressSpacePlanCrWrapper{cr}
+	addressSpacePlanContainer := &modify_crs.Container{}
+	addressSpacePlanContainer.Put(aspcr)
+	runCrTest(t, ctx, &asp, addressSpacePlanContainer)
 }
 
 //========================================================================================================
@@ -60,35 +55,36 @@ func addressSpacePlanTestSetup(t *testing.T, ctx *TestingContext, wg *sync.WaitG
 
 func addressPlanTest(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
 	apl := &enmasse.AddressPlanList{}
-	listOpts := &k8sclient.ListOptions{
-		Namespace: modify_crs.AmqOnline,
-	}
-	err := ctx.Client.List(goctx.TODO(), apl, listOpts)
+	err := ctx.Client.List(goctx.TODO(), apl, amq_online.ListOpts)
 	if err != nil {
 		t.Fatal("addressPlan : Failed to get a list of address plan CR's from cluster")
 	}
 
 	for _, cr := range apl.Items {
 		wg.Add(1)
-		go addressPlanTestSetup(t, ctx, wg, &cr)
+		addressPlanTestSetup(t, ctx, wg, &cr)
 		break // This will need to be removed, issue with concurrence on writes
 	}
 }
 
 func addressPlanTestSetup(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup, cr *enmasse.AddressPlan) {
 	defer wg.Done()
-	ap := amq_online.AddressPlan{}
-	apcr := amq_online.AddressPlanCr{cr}
+	ap := amq_online.AddressPlanReference{}
+	apcr := amq_online.AddressPlanCrWrapper{cr}
 	addressPlanContainer := &modify_crs.Container{}
 	addressPlanContainer.Put(apcr)
-	modifyExistingValues(t, ctx, &ap, addressPlanContainer)
-	deleteExistingValues(t, ctx, &ap, addressPlanContainer)
-	addNewCRValues(t, ctx, &ap, addressPlanContainer)
+	runCrTest(t, ctx, &ap, addressPlanContainer)
 }
 
 //========================================================================================================
 // generic functions
 //========================================================================================================
+
+func runCrTest(t *testing.T, ctx *TestingContext, rt modify_crs.ResourceType, crData *modify_crs.Container) {
+	modifyExistingValues(t, ctx, rt, crData)
+	deleteExistingValues(t, ctx, rt, crData)
+	addNewCRValues(t, ctx, rt, crData)
+}
 
 func modifyExistingValues(t *testing.T, ctx *TestingContext, rt modify_crs.ResourceType, crData *modify_crs.Container) {
 	phase := "Modify Existing CR Values"
@@ -120,7 +116,7 @@ func deleteExistingValues(t *testing.T, ctx *TestingContext, rt modify_crs.Resou
 
 func addNewCRValues(t *testing.T, ctx *TestingContext, rt modify_crs.ResourceType, crData *modify_crs.Container) {
 	phase := "Adding New CR Values"
-	rt.AddCRDummyValues(t, crData, phase)
+	AddDummyCRValues(t, rt, crData, phase)
 	updateClusterCr(t, ctx, rt, crData, phase)
 	compareAddedResultsAfterReconcile(t, ctx, rt, crData, phase)
 }
@@ -191,7 +187,7 @@ func compareResultsAfterReconcile(t *testing.T, ctx *TestingContext, rt modify_c
 }
 
 func compareAddedResultsAfterReconcile(t *testing.T, ctx *TestingContext, rt modify_crs.ResourceType, intContainer *modify_crs.Container, phase string) {
-	cr, ok := intContainer.Get().(modify_crs.CrInterface)
+	cr, ok := getCR(intContainer, rt)
 	if !ok {
 		t.Log(cr)
 		t.Fatalf("%s : Unable to read CR from intContainer", phase)
@@ -206,7 +202,7 @@ func compareAddedResultsAfterReconcile(t *testing.T, ctx *TestingContext, rt mod
 	if err != nil && err.Error() != "timed out waiting for the condition" {
 		t.Fatalf("%s : %s: %s:, %s", phase, cr.GetKind(), cr.GetName(), err)
 	}
-	rt.CheckDummyValuesStillExist(t, intContainer, phase)
+	CheckDummyValuesStillExist(t, rt, intContainer, phase)
 }
 
 func waitReconcilingCR(t *testing.T, ctx *TestingContext, rt modify_crs.ResourceType, intContainer *modify_crs.Container) (done bool, err error) {
@@ -236,13 +232,38 @@ func waitReconcilingCR(t *testing.T, ctx *TestingContext, rt modify_crs.Resource
 	}
 }
 
+func AddDummyCRValues(t *testing.T, rt modify_crs.ResourceType, intContainer *modify_crs.Container, phase string) {
+	cr, ok := getCR(intContainer, rt)
+	if !ok {
+		t.Fatalf("%s : Unable to read enmasse.AddressSpacePlanReference from intContainer", phase)
+	}
+	ant := cr.GetAnnotations()
+	ant["dummy-value"] = "dummy value"
+	cr.SetAnnotations(ant)
+
+	intContainer.Put(cr)
+}
+
+func CheckDummyValuesStillExist(t *testing.T, rt modify_crs.ResourceType, intContainer *modify_crs.Container, phase string) {
+	cr, ok := getCR(intContainer, rt)
+	if !ok {
+		t.Fatalf("%s : Unable to read enmasse.AddressPlanReference from intContainer", phase)
+	}
+	ant := cr.GetAnnotations()
+	if ant["dummy-value"] != "dummy value" {
+		t.Fatal("Add New CR Values :  Added dummy values got reset.")
+	}
+
+	intContainer.Put(cr)
+}
+
 func getCR(intContainer *modify_crs.Container, rt modify_crs.ResourceType) (modify_crs.CrInterface, bool) {
 	switch {
 	case rt.CrType() == amq_online.EnmasseAddressPlan:
-		cr, ok := intContainer.Get().(amq_online.AddressPlanCr)
+		cr, ok := intContainer.Get().(amq_online.AddressPlanCrWrapper)
 		return cr, ok
 	case rt.CrType() == amq_online.EnmasseAddressSpacePlan:
-		cr, ok := intContainer.Get().(amq_online.AddressSpacePlanCr)
+		cr, ok := intContainer.Get().(amq_online.AddressSpacePlanCrWrapper)
 		return cr, ok
 	default:
 		return nil, false

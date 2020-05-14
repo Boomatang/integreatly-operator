@@ -12,41 +12,47 @@ import (
 // enmasse addressSpacePlan
 //========================================================================================================
 
-type AddressSpacePlanCr struct {
+type AddressSpacePlanCrWrapper struct {
 	// Add real CR as type
 	Cr *v1beta2.AddressSpacePlan
 }
 
-func (cr AddressSpacePlanCr) GetName() string {
-	return cr.Cr.Name
+func (wrapper AddressSpacePlanCrWrapper) GetName() string {
+	return wrapper.Cr.Name
 }
-func (cr AddressSpacePlanCr) GetNamespace() string {
-	return cr.Cr.Namespace
+func (wrapper AddressSpacePlanCrWrapper) GetNamespace() string {
+	return wrapper.Cr.Namespace
 }
-func (cr AddressSpacePlanCr) GetResourceVersion() string {
-	return cr.Cr.ResourceVersion
+func (wrapper AddressSpacePlanCrWrapper) GetResourceVersion() string {
+	return wrapper.Cr.ResourceVersion
 }
-func (cr AddressSpacePlanCr) GetKind() string {
-	return cr.Cr.Kind
+func (wrapper AddressSpacePlanCrWrapper) GetKind() string {
+	return wrapper.Cr.Kind
 }
-func (cr AddressSpacePlanCr) GetCr() runtime.Object {
-	return cr.Cr
+func (wrapper AddressSpacePlanCrWrapper) GetCr() runtime.Object {
+	return wrapper.Cr
+}
+func (wrapper AddressSpacePlanCrWrapper) SetAnnotations(annotations map[string]string) {
+	wrapper.Cr.SetAnnotations(annotations)
+}
+func (wrapper AddressSpacePlanCrWrapper) GetAnnotations() map[string]string {
+	return wrapper.Cr.GetAnnotations()
 }
 
-type AddressSpacePlan struct {
+type AddressSpacePlanReference struct {
 	IntegreatlyName      string
 	IntegreatlyNamespace string
 }
 
-func (i *AddressSpacePlan) CrType() string {
+func (reference *AddressSpacePlanReference) CrType() string {
 
 	return EnmasseAddressSpacePlan
 }
 
-func (i *AddressSpacePlan) DeleteExistingValues(t *testing.T, intContainer *modify_crs.Container, phase string) {
-	cr, ok := intContainer.Get().(AddressSpacePlanCr)
+func (reference *AddressSpacePlanReference) DeleteExistingValues(t *testing.T, intContainer *modify_crs.Container, phase string) {
+	cr, ok := intContainer.Get().(AddressSpacePlanCrWrapper)
 	if !ok {
-		t.Fatalf("%s : Unable to read enmasse.AddressSpacePlan from intContainer", phase)
+		t.Fatalf("%s : Unable to read enmasse.AddressSpacePlanReference from intContainer", phase)
 	}
 
 	ant := cr.Cr.GetAnnotations()
@@ -57,25 +63,25 @@ func (i *AddressSpacePlan) DeleteExistingValues(t *testing.T, intContainer *modi
 	intContainer.Put(cr)
 }
 
-func (i *AddressSpacePlan) CopyRequiredValues(t *testing.T, intContainer *modify_crs.Container, phase string) {
+func (reference *AddressSpacePlanReference) CopyRequiredValues(t *testing.T, intContainer *modify_crs.Container, phase string) {
 
-	cr, ok := intContainer.Get().(AddressSpacePlanCr)
+	cr, ok := intContainer.Get().(AddressSpacePlanCrWrapper)
 	if !ok {
-		t.Fatalf("%s : Unable to read enmasse.AddressSpacePlan from intContainer", phase)
+		t.Fatalf("%s : Unable to read enmasse.AddressSpacePlanReference from intContainer", phase)
 	}
 
 	ant := cr.Cr.GetAnnotations()
-	i.IntegreatlyName = ant[modify_crs.IntegreatlyName]
-	i.IntegreatlyNamespace = ant[modify_crs.IntegreatlyNamespace]
+	reference.IntegreatlyName = ant[modify_crs.IntegreatlyName]
+	reference.IntegreatlyNamespace = ant[modify_crs.IntegreatlyNamespace]
 
 	intContainer.Put(cr)
 }
 
-func (i *AddressSpacePlan) ChangeCRValues(t *testing.T, intContainer *modify_crs.Container, phase string) {
+func (reference *AddressSpacePlanReference) ChangeCRValues(t *testing.T, intContainer *modify_crs.Container, phase string) {
 
-	cr, ok := intContainer.Get().(AddressSpacePlanCr)
+	cr, ok := intContainer.Get().(AddressSpacePlanCrWrapper)
 	if !ok {
-		t.Fatalf("%s : Unable to read enmasse.AddressSpacePlan from intContainer", phase)
+		t.Fatalf("%s : Unable to read enmasse.AddressSpacePlanReference from intContainer", phase)
 	}
 
 	ant := cr.Cr.GetAnnotations()
@@ -86,30 +92,30 @@ func (i *AddressSpacePlan) ChangeCRValues(t *testing.T, intContainer *modify_crs
 	intContainer.Put(cr)
 }
 
-func (i *AddressSpacePlan) CompareValues(t *testing.T, intContainer *modify_crs.Container, phase string) *[]modify_crs.CompareResult {
+func (reference *AddressSpacePlanReference) CompareValues(t *testing.T, intContainer *modify_crs.Container, phase string) *[]modify_crs.CompareResult {
 	var values []modify_crs.CompareResult
 
-	cr, ok := intContainer.Get().(AddressSpacePlanCr)
+	cr, ok := intContainer.Get().(AddressSpacePlanCrWrapper)
 	if !ok {
-		t.Fatalf("%s : Unable to read enmasse.AddressSpacePlan from intContainer", phase)
+		t.Fatalf("%s : Unable to read enmasse.AddressSpacePlanReference from intContainer", phase)
 	}
 
 	ant := cr.Cr.GetAnnotations()
-	if ant[modify_crs.IntegreatlyName] != i.IntegreatlyName {
+	if ant[modify_crs.IntegreatlyName] != reference.IntegreatlyName {
 		values = append(values, modify_crs.CompareResult{
 			Type:  cr.GetKind(),
 			Name:  cr.GetName(),
 			Key:   "metadata.annotations.integreatly-name",
-			Error: fmt.Sprintf("%s is not equal to expected %s", ant[modify_crs.IntegreatlyName], i.IntegreatlyName),
+			Error: fmt.Sprintf("%s is not equal to expected %s", ant[modify_crs.IntegreatlyName], reference.IntegreatlyName),
 		})
 	}
 
-	if ant[modify_crs.IntegreatlyNamespace] != i.IntegreatlyNamespace {
+	if ant[modify_crs.IntegreatlyNamespace] != reference.IntegreatlyNamespace {
 		values = append(values, modify_crs.CompareResult{
 			Type:  cr.GetKind(),
 			Name:  cr.GetName(),
 			Key:   "metadata.annotations.integreatly-namespace",
-			Error: fmt.Sprintf("%s is not equal to expected %s", ant[modify_crs.IntegreatlyNamespace], i.IntegreatlyNamespace),
+			Error: fmt.Sprintf("%s is not equal to expected %s", ant[modify_crs.IntegreatlyNamespace], reference.IntegreatlyNamespace),
 		})
 	}
 	intContainer.Put(cr)
@@ -118,29 +124,4 @@ func (i *AddressSpacePlan) CompareValues(t *testing.T, intContainer *modify_crs.
 	} else {
 		return nil
 	}
-}
-
-func (i *AddressSpacePlan) AddCRDummyValues(t *testing.T, intContainer *modify_crs.Container, phase string) {
-	cr, ok := intContainer.Get().(AddressSpacePlanCr)
-	if !ok {
-		t.Fatalf("%s : Unable to read enmasse.AddressSpacePlan from intContainer", phase)
-	}
-	ant := cr.Cr.GetAnnotations()
-	ant["dummy-value"] = "dummy value"
-	cr.Cr.SetAnnotations(ant)
-
-	intContainer.Put(cr)
-}
-
-func (i *AddressSpacePlan) CheckDummyValuesStillExist(t *testing.T, intContainer *modify_crs.Container, phase string) {
-	cr, ok := intContainer.Get().(AddressSpacePlanCr)
-	if !ok {
-		t.Fatalf("%s : Unable to read enmasse.AddressSpacePlan from intContainer", phase)
-	}
-	ant := cr.Cr.GetAnnotations()
-	if ant["dummy-value"] != "dummy value" {
-		t.Fatal("Add New CR Values :  Added dummy values got reset.")
-	}
-
-	intContainer.Put(cr)
 }
