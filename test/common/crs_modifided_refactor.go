@@ -26,6 +26,7 @@ import (
 // - See the format the Brian made https://github.com/briangallagher/integreatly-operator/blob/INTLY-6123-jim/test/common/crs_modified_brian.go
 // - Check his function names
 // - How the checking that data changed is handled
+// - once all the crs that are in the crs_modifided.go have been converted to this new style that file can eb removed
 func compileBrake()  {
 	compile brake
 }
@@ -55,7 +56,7 @@ func authenticationServiceTest(t *testing.T, ctx *TestingContext, wg *sync.WaitG
 
 	for _, cr := range asl.Items {
 		wg.Add(1)
-		authenticationServiceTestSetup(t, ctx, wg, &cr)
+		go authenticationServiceTestSetup(t, ctx, wg, &cr)
 		// Must check all cr's There is two or more configurations been checked
 	}
 }
@@ -83,7 +84,6 @@ func addressSpacePlanTest(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup)
 	for _, cr := range aspl.Items {
 		wg.Add(1)
 		go addressSpacePlanTestSetup(t, ctx, wg, &cr)
-		break // This will need to be removed, issue with concurrence on writes
 	}
 }
 
@@ -109,8 +109,7 @@ func addressPlanTest(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
 
 	for _, cr := range apl.Items {
 		wg.Add(1)
-		addressPlanTestSetup(t, ctx, wg, &cr)
-		break // This will need to be removed, issue with concurrence on writes
+		go addressPlanTestSetup(t, ctx, wg, &cr)
 	}
 }
 
