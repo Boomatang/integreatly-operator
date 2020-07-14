@@ -6,6 +6,7 @@ import (
 	enmasse "github.com/integr8ly/integreatly-operator/pkg/apis-products/enmasse/v1beta2"
 	"github.com/integr8ly/integreatly-operator/test/common/modify-crs"
 	"github.com/integr8ly/integreatly-operator/test/common/modify-crs/amq-online"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sync"
@@ -27,9 +28,9 @@ import (
 // - Check his function names
 // - How the checking that data changed is handled
 // - once all the crs that are in the crs_modifided.go have been converted to this new style that file can eb removed
-func compileBrake()  {
-	compile brake
-}
+//func compileBrake()  {
+//	compile brake
+//}
 
 //========================================================================================================
 // Setting up the test
@@ -40,6 +41,7 @@ func TestResetCRs(t *testing.T, ctx *TestingContext) {
 	authenticationServiceTest(t, ctx, &wg)
 	addressSpacePlanTest(t, ctx, &wg)
 	addressPlanTest(t, ctx, &wg)
+	roleBindingTest(t, ctx, &wg)
 	wg.Wait()
 }
 
@@ -123,8 +125,60 @@ func addressPlanTestSetup(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup,
 }
 
 //========================================================================================================
+// enmasse rbacv1.RoleBinding
+//========================================================================================================
+
+func roleBindingTest(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
+	rbl := &rbacv1.RoleBindingList{}
+	err := ctx.Client.List(goctx.TODO(), rbl, amq_online.ListOpts)
+	if err != nil {
+		t.Fatal("addressPlan : Failed to get a list of address plan CR's from cluster")
+	}
+
+	var skipped []string
+	for _, cr := range rbl.Items {
+		if cr.Name == "decdicated-admins-service-admin" {
+			wg.Add(1)
+			go roleBindingTestSetup(t, ctx, wg, &cr)
+		} else {
+			skipped = append(skipped, cr.Name)
+		}
+	}
+	t.Logf("rbacv1.RoleBinding : The following CR's were skipped, %s", skipped)
+
+}
+
+func roleBindingTestSetup(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup, cr *rbacv1.RoleBinding) {
+	defer wg.Done()
+	rb := amq_online.RoleBindingReference{}
+	rbcr := amq_online.RoleBindingCrWrapper{cr}
+	roleBindingContainer := &modify_crs.Container{}
+	roleBindingContainer.Put(rbcr)
+	runCrTest(t, ctx, &rb, roleBindingContainer)
+}
+
+//========================================================================================================
 // generic functions
 //========================================================================================================
+
+func getCR(intContainer *modify_crs.Container, rt modify_crs.ResourceType) (modify_crs.CrInterface, bool) {
+	switch rt.CrType() {
+	case amq_online.EnmasseAddressPlan:
+		cr, ok := intContainer.Get().(amq_online.AddressPlanCrWrapper)
+		return cr, ok
+	case amq_online.EnmasseAddressSpacePlan:
+		cr, ok := intContainer.Get().(amq_online.AddressSpacePlanCrWrapper)
+		return cr, ok
+	case amq_online.EnmasseAuthenticationService:
+		cr, ok := intContainer.Get().(amq_online.AuthenticationServiceCrWrapper)
+		return cr, ok
+	case amq_online.Rbacv1RoleBinding:
+		cr, ok := intContainer.Get().(amq_online.RoleBindingCrWrapper)
+		return cr, ok
+	default:
+		return nil, false
+	}
+}
 
 func runCrTest(t *testing.T, ctx *TestingContext, rt modify_crs.ResourceType, crData *modify_crs.Container) {
 	modifyExistingValues(t, ctx, rt, crData)
@@ -264,9 +318,17 @@ func waitReconcilingCR(t *testing.T, ctx *TestingContext, rt modify_crs.Resource
 		t.Log(cr)
 		t.Fatalf("waitReconcilingCR : Unable to read CR from intContainer")
 	}
-
 	resourceVersion := cr.GetResourceVersion()
+	intContainer.Put(cr)
+
 	err = wait.Poll(modify_crs.RetryInterval, modify_crs.Timeout, func() (done bool, err error) {
+		cr, ok := getCR(intContainer, rt)
+		if !ok {
+			t.Log(cr)
+			t.Fatalf("waitReconcilingCR : Unable to read CR from intContainer")
+		}
+		defer intContainer.Put(cr)
+
 		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.GetName(), Namespace: cr.GetNamespace()}, cr.GetCr())
 		if err != nil {
 			return false, err
@@ -277,7 +339,6 @@ func waitReconcilingCR(t *testing.T, ctx *TestingContext, rt modify_crs.Resource
 			return false, nil
 		}
 	})
-	intContainer.Put(cr)
 	if err != nil {
 		return false, err
 	} else {
@@ -310,7 +371,7 @@ func CheckDummyValuesStillExist(t *testing.T, rt modify_crs.ResourceType, intCon
 	intContainer.Put(cr)
 }
 
-func refreshCR(t *testing.T, ctx *TestingContext, rt modify_crs.ResourceType, intContainer *modify_crs.Container, phase string){
+func refreshCR(t *testing.T, ctx *TestingContext, rt modify_crs.ResourceType, intContainer *modify_crs.Container, phase string) {
 	cr, ok := getCR(intContainer, rt)
 	if !ok {
 		t.Log(cr)
@@ -322,20 +383,4 @@ func refreshCR(t *testing.T, ctx *TestingContext, rt modify_crs.ResourceType, in
 		t.Fatalf("%s : Fail to refresh the cr", phase)
 	}
 	intContainer.Put(cr)
-}
-
-func getCR(intContainer *modify_crs.Container, rt modify_crs.ResourceType) (modify_crs.CrInterface, bool) {
-	switch rt.CrType() {
-	case amq_online.EnmasseAddressPlan:
-		cr, ok := intContainer.Get().(amq_online.AddressPlanCrWrapper)
-		return cr, ok
-	case amq_online.EnmasseAddressSpacePlan:
-		cr, ok := intContainer.Get().(amq_online.AddressSpacePlanCrWrapper)
-		return cr, ok
-	case amq_online.EnmasseAuthenticationService:
-		cr, ok := intContainer.Get().(amq_online.AuthenticationServiceCrWrapper)
-		return cr, ok
-	default:
-		return nil, false
-	}
 }
