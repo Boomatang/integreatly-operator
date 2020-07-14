@@ -42,328 +42,328 @@ func testAMQOnline(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
 	testBrokeredInfraConfigCr(wg, t, ctx)
 	testStandardInfraConfigCr(wg, t, ctx)
 	testRoleCr(wg, t, ctx)
-	testRoleBindingCr(wg, t, ctx)
+	//testRoleBindingCr(wg, t, ctx)
 }
 
-//========================================================================================================
-// enmasse rbacv1.RoleBinding
-// There are some CR that are been skipped. I do not know where these get created
-//========================================================================================================
-
-type roleBindingCr struct {
-	IntegreatlyName      string
-	IntegreatlyNamespace string
-	RoleRefName          string
-	RoleRefKind          string
-	Subjects             []roleBindingSubject
-}
-
-type roleBindingSubject struct {
-	SubjectName string
-	SubjectKind string
-}
-
-func testRoleBindingCr(wg *sync.WaitGroup, t *testing.T, ctx *TestingContext) {
-	crList := &rbacv1.RoleBindingList{}
-	listOpts := &k8sclient.ListOptions{
-		Namespace: amqOnline,
-	}
-
-	err := ctx.Client.List(goctx.TODO(), crList, listOpts)
-	if err != nil {
-		t.Fatal("rbacv1.RoleBinding : Failed to get a list of CR's from cluster: ", err)
-	}
-	var skipped []string
-	for _, cr := range crList.Items {
-		if cr.Name == "dedicated-admins-service-admin" {
-			wg.Add(1)
-			go setUpRoleBindingCr(wg, t, ctx, cr)
-		} else {
-			skipped = append(skipped, cr.Name)
-		}
-	}
-	t.Logf("rbacv1.RoleBinding : The following CR's were skipped, %s", skipped)
-
-}
-
-func setUpRoleBindingCr(wg *sync.WaitGroup, t *testing.T, ctx *TestingContext, cr rbacv1.RoleBinding) {
-	defer wg.Done()
-	i := roleBindingCr{}
-	i.runTests(t, ctx, cr)
-}
-
-func (i *roleBindingCr) runTests(t *testing.T, ctx *TestingContext, cr rbacv1.RoleBinding) {
-	if crFieldEdit {
-		i.modifyExistingValues(t, ctx, cr)
-	}
-	if crFieldDelete {
-		i.deleteExistingValues(t, ctx, cr)
-	}
-	if crFieldAdd {
-		i.addNewValues(t, ctx, cr)
-	}
-}
-
-func (i *roleBindingCr) modifyExistingValues(t *testing.T, ctx *TestingContext, cr rbacv1.RoleBinding) {
-	i.copyRequiredValues(cr)
-	i.changeCRValues(&cr)
-	err := ctx.Client.Update(goctx.TODO(), &cr)
-	if err != nil {
-		t.Fatal("Modify Existing CR values : Failed to update CR on cluster: ", err)
-	}
-
-	var results *[]modify_crs.CompareResult
-	count := 3
-	forceRetry := true
-	// Force Retry is required to remove flaky test results after random updates
-	for forceRetry {
-		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-		if err != nil {
-			t.Fatalf("Modify Existing CR values : Fail to refresh the cr")
-		}
-
-		t.Logf("Modify Existing CR values : %s: count = %v, revison = %s", cr.Name, count, cr.ResourceVersion)
-		_, err = i.waitReconcilingCR(ctx, cr)
-		if err != nil {
-			t.Fatalf("Modify Existing CR values : %s: %s:, %s", cr.Kind, cr.Name, err)
-		}
-		results = i.compareValues(&cr)
-
-		if results == nil {
-			forceRetry = false
-			count -= 1
-		}
-		count -= 1
-		if count < 0 {
-			forceRetry = false
-		}
-	}
-
-	if results != nil {
-		for _, result := range *results {
-			t.Logf("Modify Existing CR values : %s: %s: %s: %s", result.Type, result.Name, result.Key, result.Error)
-		}
-		t.Fatal("Modify Existing CR values : Failed to reset the CR values")
-	}
-}
-
-func (i *roleBindingCr) deleteExistingValues(t *testing.T, ctx *TestingContext, cr rbacv1.RoleBinding) {
-	err := ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-	if err != nil {
-		t.Fatal("Deleting CR Values : Failed to refresh CR")
-	}
-	i.copyRequiredValues(cr)
-	i.deleteCRValues(&cr)
-	err = ctx.Client.Update(goctx.TODO(), &cr)
-	if err != nil {
-		t.Log(err)
-		t.Fatal("Deleting CR Values : Failed to update CR on cluster: ", err)
-	}
-
-	var results *[]modify_crs.CompareResult
-	count := 3
-	forceRetry := true
-	// Force Retry is required to remove flaky test results after random updates
-	for forceRetry {
-		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-		if err != nil {
-			t.Fatalf("Deleting CR Values : Fail to refresh the cr")
-		}
-
-		t.Logf("Deleting CR Values : %s: count = %v, revison = %s", cr.Name, count, cr.ResourceVersion)
-		_, err = i.waitReconcilingCR(ctx, cr)
-		if err != nil {
-			t.Fatalf("Deleting CR Values : %s: %s:, %s", cr.Kind, cr.Name, err)
-		}
-		results = i.compareValues(&cr)
-
-		if results == nil {
-			forceRetry = false
-			count -= 1
-		}
-		count -= 1
-		if count < 0 {
-			forceRetry = false
-		}
-	}
-
-	if results != nil {
-		for _, result := range *results {
-			t.Logf("Deleting CR Values : %s: %s: %s: %s", result.Type, result.Name, result.Key, result.Error)
-		}
-		t.Fatal("Deleting CR Values : Failed to reset the CR values")
-	}
-}
-
-func (i *roleBindingCr) addNewValues(t *testing.T, ctx *TestingContext, cr rbacv1.RoleBinding) {
-	err := ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-	if err != nil {
-		t.Fatal("Add New CR Values :  Failed to refresh CR")
-	}
-	i.addCRValue(cr)
-	err = ctx.Client.Update(goctx.TODO(), &cr)
-	if err != nil {
-		t.Fatal("Add New CR Values :  Failed to update CR on cluster")
-	}
-
-	// Refresh CR to get up-to-date version number
-	err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-	if err != nil {
-		t.Fatalf("Add New CR Values :  Fail to refresh the cr")
-	}
-
-	_, err = i.waitReconcilingCR(ctx, cr)
-	if err != nil && err.Error() != "timed out waiting for the condition" {
-		t.Fatal(err)
-	} else {
-		i.addedValuesStillExist(t, cr)
-	}
-}
-
-func (i *roleBindingCr) copyRequiredValues(cr rbacv1.RoleBinding) {
-	ant := cr.GetAnnotations()
-	i.IntegreatlyName = ant[integreatlyName]
-	i.IntegreatlyNamespace = ant[integreatlyNamespace]
-	i.RoleRefKind = cr.RoleRef.Kind
-	i.RoleRefName = cr.RoleRef.Name
-	for _, subject := range cr.Subjects {
-		i.Subjects = append(i.Subjects, roleBindingSubject{
-			SubjectName: subject.Name,
-			SubjectKind: subject.Kind,
-		})
-	}
-
-}
-
-func (i *roleBindingCr) changeCRValues(cr *rbacv1.RoleBinding) {
-	ant := cr.GetAnnotations()
-	if ant == nil {
-		ant = map[string]string{}
-	}
-	ant[integreatlyName] = "Bad Value"
-	ant[integreatlyNamespace] = "Bad Value"
-	cr.SetAnnotations(ant)
-	//TODO Find a Role Kind that is allowed and is not Kind: Role
-	//cr.RoleRef.Kind = "Bad Value"
-	// Can not change role reference
-	//cr.RoleRef.Name = "bad-value"
-	for index := range cr.Subjects {
-		cr.Subjects[index].Name = "bad-value"
-		cr.Subjects[index].Kind = "ServiceAccount"
-		cr.Subjects[index].APIGroup = ""
-	}
-}
-
-func (i *roleBindingCr) waitReconcilingCR(ctx *TestingContext, cr rbacv1.RoleBinding) (done bool, err error) {
-	resourceVersion := cr.ResourceVersion
-	err = wait.Poll(crRetryInterval, crTimeout, func() (done bool, err error) {
-		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-		if err != nil {
-			return false, err
-		}
-
-		if resourceVersion != cr.ResourceVersion {
-			return true, nil
-		} else {
-			return false, nil
-		}
-	})
-	if err != nil {
-		return false, err
-	} else {
-		return true, nil
-	}
-}
-
-func (i *roleBindingCr) compareValues(cr *rbacv1.RoleBinding) *[]modify_crs.CompareResult {
-	var values []modify_crs.CompareResult
-	ant := cr.GetAnnotations()
-	if ant[integreatlyName] != i.IntegreatlyName {
-		values = append(values, modify_crs.CompareResult{
-			Type:  cr.Kind,
-			Name:  cr.Name,
-			Key:   "metadata.annotations.integreatly-name",
-			Error: fmt.Sprintf("%s is not equal to expected %s", ant[integreatlyName], i.IntegreatlyName),
-		})
-	}
-
-	if ant[integreatlyNamespace] != i.IntegreatlyNamespace {
-		values = append(values, modify_crs.CompareResult{
-			Type:  cr.Kind,
-			Name:  cr.Name,
-			Key:   "metadata.annotations.integreatly-namespace",
-			Error: fmt.Sprintf("%s is not equal to expected %s", ant[integreatlyNamespace], i.IntegreatlyNamespace),
-		})
-	}
-
-	for _, subject := range cr.Subjects {
-		err := i.compareSubjectName(subject.Name)
-		if err != nil {
-			values = append(values, modify_crs.CompareResult{
-				Type:  cr.Kind,
-				Name:  cr.Name,
-				Key:   "subjects.[].name",
-				Error: err.Error(),
-			})
-		}
-
-		err = i.compareSubjectKind(subject.Kind)
-		if err != nil {
-			values = append(values, modify_crs.CompareResult{
-				Type:  cr.Kind,
-				Name:  cr.Name,
-				Key:   "subjects.[].Kind",
-				Error: err.Error(),
-			})
-		}
-	}
-
-	if len(values) > 0 {
-		return &values
-	} else {
-		return nil
-	}
-}
-
-func (i *roleBindingCr) compareSubjectKind(value string) error {
-	for _, item := range i.Subjects {
-		if value == item.SubjectKind {
-			return nil
-		}
-	}
-	return fmt.Errorf("could not find %s in copied CR Subject.Kind", value)
-}
-
-func (i *roleBindingCr) compareSubjectName(value string) error {
-	for _, item := range i.Subjects {
-		if value == item.SubjectName {
-			return nil
-		}
-	}
-	return fmt.Errorf("could not find %s in copied CR Subject.Name", value)
-}
-
-func (i *roleBindingCr) deleteCRValues(cr *rbacv1.RoleBinding) {
-	ant := cr.GetAnnotations()
-	delete(ant, integreatlyName)
-	delete(ant, integreatlyNamespace)
-	cr.SetAnnotations(ant)
-	cr.Subjects = nil
-	//cr.RoleRef = rbacv1.RoleRef{}
-}
-
-func (i *roleBindingCr) addCRValue(cr rbacv1.RoleBinding) {
-	ant := cr.GetAnnotations()
-	ant["dummy-value"] = "dummy value"
-	cr.SetAnnotations(ant)
-}
-
-func (i *roleBindingCr) addedValuesStillExist(t *testing.T, cr rbacv1.RoleBinding) {
-	ant := cr.GetAnnotations()
-	if ant["dummy-value"] != "dummy value" {
-		t.Fatal("Add New CR Values :  Added dummy values got reset.")
-	}
-}
+////========================================================================================================
+//// enmasse rbacv1.RoleBinding
+//// There are some CR that are been skipped. I do not know where these get created
+////========================================================================================================
+//
+//type roleBindingCr struct {
+//	IntegreatlyName      string
+//	IntegreatlyNamespace string
+//	RoleRefName          string
+//	RoleRefKind          string
+//	Subjects             []roleBindingSubject
+//}
+//
+//type roleBindingSubject struct {
+//	SubjectName string
+//	SubjectKind string
+//}
+//
+//func testRoleBindingCr(wg *sync.WaitGroup, t *testing.T, ctx *TestingContext) {
+//	crList := &rbacv1.RoleBindingList{}
+//	listOpts := &k8sclient.ListOptions{
+//		Namespace: amqOnline,
+//	}
+//
+//	err := ctx.Client.List(goctx.TODO(), crList, listOpts)
+//	if err != nil {
+//		t.Fatal("rbacv1.RoleBinding : Failed to get a list of CR's from cluster: ", err)
+//	}
+//	var skipped []string
+//	for _, cr := range crList.Items {
+//		if cr.Name == "dedicated-admins-service-admin" {
+//			wg.Add(1)
+//			go setUpRoleBindingCr(wg, t, ctx, cr)
+//		} else {
+//			skipped = append(skipped, cr.Name)
+//		}
+//	}
+//	t.Logf("rbacv1.RoleBinding : The following CR's were skipped, %s", skipped)
+//
+//}
+//
+//func setUpRoleBindingCr(wg *sync.WaitGroup, t *testing.T, ctx *TestingContext, cr rbacv1.RoleBinding) {
+//	defer wg.Done()
+//	i := roleBindingCr{}
+//	i.runTests(t, ctx, cr)
+//}
+//
+//func (i *roleBindingCr) runTests(t *testing.T, ctx *TestingContext, cr rbacv1.RoleBinding) {
+//	if crFieldEdit {
+//		i.modifyExistingValues(t, ctx, cr)
+//	}
+//	if crFieldDelete {
+//		i.deleteExistingValues(t, ctx, cr)
+//	}
+//	if crFieldAdd {
+//		i.addNewValues(t, ctx, cr)
+//	}
+//}
+//
+//func (i *roleBindingCr) modifyExistingValues(t *testing.T, ctx *TestingContext, cr rbacv1.RoleBinding) {
+//	i.copyRequiredValues(cr)
+//	i.changeCRValues(&cr)
+//	err := ctx.Client.Update(goctx.TODO(), &cr)
+//	if err != nil {
+//		t.Fatal("Modify Existing CR values : Failed to update CR on cluster: ", err)
+//	}
+//
+//	var results *[]modify_crs.CompareResult
+//	count := 3
+//	forceRetry := true
+//	// Force Retry is required to remove flaky test results after random updates
+//	for forceRetry {
+//		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
+//		if err != nil {
+//			t.Fatalf("Modify Existing CR values : Fail to refresh the cr")
+//		}
+//
+//		t.Logf("Modify Existing CR values : %s: count = %v, revison = %s", cr.Name, count, cr.ResourceVersion)
+//		_, err = i.waitReconcilingCR(ctx, cr)
+//		if err != nil {
+//			t.Fatalf("Modify Existing CR values : %s: %s:, %s", cr.Kind, cr.Name, err)
+//		}
+//		results = i.compareValues(&cr)
+//
+//		if results == nil {
+//			forceRetry = false
+//			count -= 1
+//		}
+//		count -= 1
+//		if count < 0 {
+//			forceRetry = false
+//		}
+//	}
+//
+//	if results != nil {
+//		for _, result := range *results {
+//			t.Logf("Modify Existing CR values : %s: %s: %s: %s", result.Type, result.Name, result.Key, result.Error)
+//		}
+//		t.Fatal("Modify Existing CR values : Failed to reset the CR values")
+//	}
+//}
+//
+//func (i *roleBindingCr) deleteExistingValues(t *testing.T, ctx *TestingContext, cr rbacv1.RoleBinding) {
+//	err := ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
+//	if err != nil {
+//		t.Fatal("Deleting CR Values : Failed to refresh CR")
+//	}
+//	i.copyRequiredValues(cr)
+//	i.deleteCRValues(&cr)
+//	err = ctx.Client.Update(goctx.TODO(), &cr)
+//	if err != nil {
+//		t.Log(err)
+//		t.Fatal("Deleting CR Values : Failed to update CR on cluster: ", err)
+//	}
+//
+//	var results *[]modify_crs.CompareResult
+//	count := 3
+//	forceRetry := true
+//	// Force Retry is required to remove flaky test results after random updates
+//	for forceRetry {
+//		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
+//		if err != nil {
+//			t.Fatalf("Deleting CR Values : Fail to refresh the cr")
+//		}
+//
+//		t.Logf("Deleting CR Values : %s: count = %v, revison = %s", cr.Name, count, cr.ResourceVersion)
+//		_, err = i.waitReconcilingCR(ctx, cr)
+//		if err != nil {
+//			t.Fatalf("Deleting CR Values : %s: %s:, %s", cr.Kind, cr.Name, err)
+//		}
+//		results = i.compareValues(&cr)
+//
+//		if results == nil {
+//			forceRetry = false
+//			count -= 1
+//		}
+//		count -= 1
+//		if count < 0 {
+//			forceRetry = false
+//		}
+//	}
+//
+//	if results != nil {
+//		for _, result := range *results {
+//			t.Logf("Deleting CR Values : %s: %s: %s: %s", result.Type, result.Name, result.Key, result.Error)
+//		}
+//		t.Fatal("Deleting CR Values : Failed to reset the CR values")
+//	}
+//}
+//
+//func (i *roleBindingCr) addNewValues(t *testing.T, ctx *TestingContext, cr rbacv1.RoleBinding) {
+//	err := ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
+//	if err != nil {
+//		t.Fatal("Add New CR Values :  Failed to refresh CR")
+//	}
+//	i.addCRValue(cr)
+//	err = ctx.Client.Update(goctx.TODO(), &cr)
+//	if err != nil {
+//		t.Fatal("Add New CR Values :  Failed to update CR on cluster")
+//	}
+//
+//	// Refresh CR to get up-to-date version number
+//	err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
+//	if err != nil {
+//		t.Fatalf("Add New CR Values :  Fail to refresh the cr")
+//	}
+//
+//	_, err = i.waitReconcilingCR(ctx, cr)
+//	if err != nil && err.Error() != "timed out waiting for the condition" {
+//		t.Fatal(err)
+//	} else {
+//		i.addedValuesStillExist(t, cr)
+//	}
+//}
+//
+//func (i *roleBindingCr) copyRequiredValues(cr rbacv1.RoleBinding) {
+//	ant := cr.GetAnnotations()
+//	i.IntegreatlyName = ant[integreatlyName]
+//	i.IntegreatlyNamespace = ant[integreatlyNamespace]
+//	i.RoleRefKind = cr.RoleRef.Kind
+//	i.RoleRefName = cr.RoleRef.Name
+//	for _, subject := range cr.Subjects {
+//		i.Subjects = append(i.Subjects, roleBindingSubject{
+//			SubjectName: subject.Name,
+//			SubjectKind: subject.Kind,
+//		})
+//	}
+//
+//}
+//
+//func (i *roleBindingCr) changeCRValues(cr *rbacv1.RoleBinding) {
+//	ant := cr.GetAnnotations()
+//	if ant == nil {
+//		ant = map[string]string{}
+//	}
+//	ant[integreatlyName] = "Bad Value"
+//	ant[integreatlyNamespace] = "Bad Value"
+//	cr.SetAnnotations(ant)
+//	//TODO Find a Role Kind that is allowed and is not Kind: Role
+//	//cr.RoleRef.Kind = "Bad Value"
+//	// Can not change role reference
+//	//cr.RoleRef.Name = "bad-value"
+//	for index := range cr.Subjects {
+//		cr.Subjects[index].Name = "bad-value"
+//		cr.Subjects[index].Kind = "ServiceAccount"
+//		cr.Subjects[index].APIGroup = ""
+//	}
+//}
+//
+//func (i *roleBindingCr) waitReconcilingCR(ctx *TestingContext, cr rbacv1.RoleBinding) (done bool, err error) {
+//	resourceVersion := cr.ResourceVersion
+//	err = wait.Poll(crRetryInterval, crTimeout, func() (done bool, err error) {
+//		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
+//		if err != nil {
+//			return false, err
+//		}
+//
+//		if resourceVersion != cr.ResourceVersion {
+//			return true, nil
+//		} else {
+//			return false, nil
+//		}
+//	})
+//	if err != nil {
+//		return false, err
+//	} else {
+//		return true, nil
+//	}
+//}
+//
+//func (i *roleBindingCr) compareValues(cr *rbacv1.RoleBinding) *[]modify_crs.CompareResult {
+//	var values []modify_crs.CompareResult
+//	ant := cr.GetAnnotations()
+//	if ant[integreatlyName] != i.IntegreatlyName {
+//		values = append(values, modify_crs.CompareResult{
+//			Type:  cr.Kind,
+//			Name:  cr.Name,
+//			Key:   "metadata.annotations.integreatly-name",
+//			Error: fmt.Sprintf("%s is not equal to expected %s", ant[integreatlyName], i.IntegreatlyName),
+//		})
+//	}
+//
+//	if ant[integreatlyNamespace] != i.IntegreatlyNamespace {
+//		values = append(values, modify_crs.CompareResult{
+//			Type:  cr.Kind,
+//			Name:  cr.Name,
+//			Key:   "metadata.annotations.integreatly-namespace",
+//			Error: fmt.Sprintf("%s is not equal to expected %s", ant[integreatlyNamespace], i.IntegreatlyNamespace),
+//		})
+//	}
+//
+//	for _, subject := range cr.Subjects {
+//		err := i.compareSubjectName(subject.Name)
+//		if err != nil {
+//			values = append(values, modify_crs.CompareResult{
+//				Type:  cr.Kind,
+//				Name:  cr.Name,
+//				Key:   "subjects.[].name",
+//				Error: err.Error(),
+//			})
+//		}
+//
+//		err = i.compareSubjectKind(subject.Kind)
+//		if err != nil {
+//			values = append(values, modify_crs.CompareResult{
+//				Type:  cr.Kind,
+//				Name:  cr.Name,
+//				Key:   "subjects.[].Kind",
+//				Error: err.Error(),
+//			})
+//		}
+//	}
+//
+//	if len(values) > 0 {
+//		return &values
+//	} else {
+//		return nil
+//	}
+//}
+//
+//func (i *roleBindingCr) compareSubjectKind(value string) error {
+//	for _, item := range i.Subjects {
+//		if value == item.SubjectKind {
+//			return nil
+//		}
+//	}
+//	return fmt.Errorf("could not find %s in copied CR Subject.Kind", value)
+//}
+//
+//func (i *roleBindingCr) compareSubjectName(value string) error {
+//	for _, item := range i.Subjects {
+//		if value == item.SubjectName {
+//			return nil
+//		}
+//	}
+//	return fmt.Errorf("could not find %s in copied CR Subject.Name", value)
+//}
+//
+//func (i *roleBindingCr) deleteCRValues(cr *rbacv1.RoleBinding) {
+//	ant := cr.GetAnnotations()
+//	delete(ant, integreatlyName)
+//	delete(ant, integreatlyNamespace)
+//	cr.SetAnnotations(ant)
+//	cr.Subjects = nil
+//	//cr.RoleRef = rbacv1.RoleRef{}
+//}
+//
+//func (i *roleBindingCr) addCRValue(cr rbacv1.RoleBinding) {
+//	ant := cr.GetAnnotations()
+//	ant["dummy-value"] = "dummy value"
+//	cr.SetAnnotations(ant)
+//}
+//
+//func (i *roleBindingCr) addedValuesStillExist(t *testing.T, cr rbacv1.RoleBinding) {
+//	ant := cr.GetAnnotations()
+//	if ant["dummy-value"] != "dummy value" {
+//		t.Fatal("Add New CR Values :  Added dummy values got reset.")
+//	}
+//}
 
 //========================================================================================================
 // enmasse rbacv1.Role

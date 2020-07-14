@@ -40,8 +40,8 @@ func TestResetCRs(t *testing.T, ctx *TestingContext) {
 	var wg sync.WaitGroup
 	//authenticationServiceTest(t, ctx, &wg) // Broken
 	addressSpacePlanTest(t, ctx, &wg)
-	//addressPlanTest(t, ctx, &wg)
-	//roleBindingTest(t, ctx, &wg)
+	addressPlanTest(t, ctx, &wg)
+	roleBindingTest(t, ctx, &wg)
 	wg.Wait()
 }
 
@@ -53,19 +53,23 @@ func authenticationServiceTest(t *testing.T, ctx *TestingContext, wg *sync.WaitG
 	asl := &enmasseadminv1beta1.AuthenticationServiceList{}
 	err := ctx.Client.List(goctx.TODO(), asl, amq_online.ListOpts)
 	if err != nil {
-		t.Fatal("addressSpacePlan : Failed to get a list of address plan CR's from cluster")
+		t.Fatal("AuthenticationService : Failed to get a list of CR's from cluster")
 	}
+	var crNames []string
 	for _, cr := range asl.Items {
 		wg.Add(1)
-		authenticationServiceTestSetup(t, ctx, wg, &cr)
+		crNames = append(crNames, cr.Name)
+		go authenticationServiceTestSetup(t, ctx, wg, cr)
 		// Must check all cr's There is two or more configurations been checked
 	}
+	t.Logf("AuthenticationService CRs : %s", crNames)
+
 }
 
-func authenticationServiceTestSetup(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup, cr *enmasseadminv1beta1.AuthenticationService) {
+func authenticationServiceTestSetup(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup, cr enmasseadminv1beta1.AuthenticationService) {
 	defer wg.Done()
 	as := amq_online.AuthenticationServiceReference{}
-	ascr := amq_online.AuthenticationServiceCrWrapper{cr}
+	ascr := amq_online.AuthenticationServiceCrWrapper{&cr}
 	authenticationServiceContainer := &modify_crs.Container{}
 	authenticationServiceContainer.Put(ascr)
 	runCrTest(t, ctx, &as, authenticationServiceContainer)
@@ -79,22 +83,22 @@ func addressSpacePlanTest(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup)
 	aspl := &enmasse.AddressSpacePlanList{}
 	err := ctx.Client.List(goctx.TODO(), aspl, amq_online.ListOpts)
 	if err != nil {
-		t.Fatal("addressSpacePlan : Failed to get a list of address plan CR's from cluster")
+		t.Fatal("addressSpacePlan : Failed to get a list of CR's from cluster")
 	}
 	var crNames []string
 	for _, cr := range aspl.Items {
 		wg.Add(1)
 		crNames = append(crNames, cr.Name)
-		addressSpacePlanTestSetup(t, ctx, wg, &cr)
+		go addressSpacePlanTestSetup(t, ctx, wg, cr)
 	}
-	t.Log(crNames)
+	t.Logf("addressSpacePlan CRs : %s", crNames)
 
 }
 
-func addressSpacePlanTestSetup(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup, cr *enmasse.AddressSpacePlan) {
+func addressSpacePlanTestSetup(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup, cr enmasse.AddressSpacePlan) {
 	defer wg.Done()
 	asp := amq_online.AddressSpacePlanReference{}
-	aspcr := amq_online.AddressSpacePlanCrWrapper{cr}
+	aspcr := amq_online.AddressSpacePlanCrWrapper{&cr}
 	addressSpacePlanContainer := &modify_crs.Container{}
 	addressSpacePlanContainer.Put(aspcr)
 	runCrTest(t, ctx, &asp, addressSpacePlanContainer)
@@ -110,17 +114,20 @@ func addressPlanTest(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
 	if err != nil {
 		t.Fatal("addressPlan : Failed to get a list of address plan CR's from cluster")
 	}
-
+	var crNames []string
 	for _, cr := range apl.Items {
 		wg.Add(1)
-		go addressPlanTestSetup(t, ctx, wg, &cr)
+		crNames = append(crNames, cr.Name)
+		go addressPlanTestSetup(t, ctx, wg, cr)
 	}
+	t.Logf("addressPlan CRs : %s", crNames)
+
 }
 
-func addressPlanTestSetup(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup, cr *enmasse.AddressPlan) {
+func addressPlanTestSetup(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup, cr enmasse.AddressPlan) {
 	defer wg.Done()
 	ap := amq_online.AddressPlanReference{}
-	apcr := amq_online.AddressPlanCrWrapper{cr}
+	apcr := amq_online.AddressPlanCrWrapper{&cr}
 	addressPlanContainer := &modify_crs.Container{}
 	addressPlanContainer.Put(apcr)
 	runCrTest(t, ctx, &ap, addressPlanContainer)
@@ -134,26 +141,29 @@ func roleBindingTest(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
 	rbl := &rbacv1.RoleBindingList{}
 	err := ctx.Client.List(goctx.TODO(), rbl, amq_online.ListOpts)
 	if err != nil {
-		t.Fatal("addressPlan : Failed to get a list of address plan CR's from cluster")
+		t.Fatal("RoleBinding : Failed to get a list of RoleBinding CR's from cluster")
 	}
 
+	var crNames []string
 	var skipped []string
 	for _, cr := range rbl.Items {
-		if cr.Name == "decdicated-admins-service-admin" {
+		if cr.Name == "dedicated-admins-service-admin" {
 			wg.Add(1)
-			go roleBindingTestSetup(t, ctx, wg, &cr)
+			crNames = append(crNames, cr.Name)
+			go roleBindingTestSetup(t, ctx, wg, cr)
 		} else {
 			skipped = append(skipped, cr.Name)
 		}
 	}
 	t.Logf("rbacv1.RoleBinding : The following CR's were skipped, %s", skipped)
+	t.Logf("rbacv1.RoleBinding  CRs : %s", crNames)
 
 }
 
-func roleBindingTestSetup(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup, cr *rbacv1.RoleBinding) {
+func roleBindingTestSetup(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup, cr rbacv1.RoleBinding) {
 	defer wg.Done()
 	rb := amq_online.RoleBindingReference{}
-	rbcr := amq_online.RoleBindingCrWrapper{cr}
+	rbcr := amq_online.RoleBindingCrWrapper{&cr}
 	roleBindingContainer := &modify_crs.Container{}
 	roleBindingContainer.Put(rbcr)
 	runCrTest(t, ctx, &rb, roleBindingContainer)
@@ -281,7 +291,7 @@ func compareResultsAfterReconcile(t *testing.T, ctx *TestingContext, rt modify_c
 			t.Fatalf("%s : Fail to refresh the cr", phase)
 		}
 
-		t.Logf("%s : %s: count = %v, revison = %s", phase, cr.GetName(), retryCount, cr.GetResourceVersion())
+		//t.Logf("%s : %s: count = %v, revison = %s", phase, cr.GetName(), retryCount, cr.GetResourceVersion())
 		intContainer.Put(cr)
 		_, err = waitReconcilingCR(t, ctx, rt, intContainer)
 		if err != nil {
