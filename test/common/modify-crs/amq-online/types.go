@@ -8,6 +8,7 @@ import (
 const (
 	EnmasseAddressPlan           = "enmasse.AddressPlanReference"
 	EnmasseAddressSpacePlan      = "enmasse.AddressSpacePlanReference"
+	EnmasseStandardInfraConfig   = "enmasse.StandardInfraConfig"
 	EnmasseAuthenticationService = "enmasseadminv1beta1.AuthenticationService"
 	Rbacv1RoleBinding            = "rbacv1.RoleBinding"
 	Rbacv1Role                   = "rbacv1.Role"

@@ -3,6 +3,7 @@ package common
 import (
 	goctx "context"
 	enmasseadminv1beta1 "github.com/integr8ly/integreatly-operator/pkg/apis-products/enmasse/admin/v1beta1"
+	v1beta1 "github.com/integr8ly/integreatly-operator/pkg/apis-products/enmasse/v1beta1"
 	enmasse "github.com/integr8ly/integreatly-operator/pkg/apis-products/enmasse/v1beta2"
 	"github.com/integr8ly/integreatly-operator/test/common/modify-crs"
 	"github.com/integr8ly/integreatly-operator/test/common/modify-crs/amq-online"
@@ -24,7 +25,8 @@ func TestResetCRs(t *testing.T, ctx *TestingContext) {
 	//addressSpacePlanTest(t, ctx, &wg)
 	//addressPlanTest(t, ctx, &wg)
 	//roleBindingTest(t, ctx, &wg)
-	roleTest(t, ctx, &wg)
+	//roleTest(t, ctx, &wg)
+	standardInfraConfigTest(t, ctx, &wg)
 	wg.Wait()
 }
 
@@ -189,6 +191,36 @@ func roleTestSetup(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup, cr rba
 }
 
 //========================================================================================================
+// enmasse StandardInfraConfig
+//========================================================================================================
+
+func standardInfraConfigTest(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
+	sicl := &v1beta1.StandardInfraConfigList{}
+	err := ctx.Client.List(goctx.TODO(), sicl, amq_online.ListOpts)
+	if err != nil {
+		t.Fatal("Role : Failed to get a list of CR's from cluster")
+	}
+
+	var crNames []string
+	for _, cr := range sicl.Items {
+		wg.Add(1)
+		crNames = append(crNames, cr.Name)
+		go standardInfraConfigTestSetup(t, ctx, wg, cr)
+	}
+	t.Logf("rbacv1.Role CRs : %s", crNames)
+
+}
+
+func standardInfraConfigTestSetup(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup, cr v1beta1.StandardInfraConfig) {
+	defer wg.Done()
+	sic := amq_online.StandardInfraConfigReference{}
+	siccr := amq_online.StandardInfraConfigCrWrapper{&cr}
+	standardInfraConfigContainer := &modify_crs.Container{}
+	standardInfraConfigContainer.Put(siccr)
+	runCrTest(t, ctx, &sic, standardInfraConfigContainer)
+}
+
+//========================================================================================================
 // generic functions
 //========================================================================================================
 
@@ -208,6 +240,9 @@ func getCR(intContainer *modify_crs.Container, rt modify_crs.ResourceType) (modi
 		return cr, ok
 	case amq_online.Rbacv1Role:
 		cr, ok := intContainer.Get().(amq_online.RoleCrWrapper)
+		return cr, ok
+	case amq_online.EnmasseStandardInfraConfig:
+		cr, ok := intContainer.Get().(amq_online.StandardInfraConfigCrWrapper)
 		return cr, ok
 	default:
 		return nil, false
