@@ -85,9 +85,9 @@ func (reference *AuthenticationServiceReference) CopyRequiredValues(t *testing.T
 	ant := cr.Cr.GetAnnotations()
 	reference.IntegreatlyName = ant[modify_crs.IntegreatlyName]
 	reference.IntegreatlyNamespace = ant[modify_crs.IntegreatlyNamespace]
+	reference.SpecType = cr.Cr.Spec.Type
+
 	switch cr.GetName() {
-	case NoneAuthservice:
-		reference.SpecType = cr.Cr.Spec.Type
 	case StandardAuthservice:
 		reference.CredentialsSecretName = cr.Cr.Spec.Standard.Datasource.CredentialsSecret.Name
 		reference.CredentialsSecretNamespace = cr.Cr.Spec.Standard.Datasource.CredentialsSecret.Namespace
