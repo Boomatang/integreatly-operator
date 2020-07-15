@@ -10,6 +10,7 @@ const (
 	EnmasseAddressSpacePlan      = "enmasse.AddressSpacePlanReference"
 	EnmasseAuthenticationService = "enmasseadminv1beta1.AuthenticationService"
 	Rbacv1RoleBinding            = "rbacv1.RoleBinding"
+	Rbacv1Role                   = "rbacv1.Role"
 )
 
 var ListOpts = &k8sclient.ListOptions{

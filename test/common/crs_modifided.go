@@ -5,7 +5,6 @@ import (
 	"fmt"
 	enmassev1beta1 "github.com/integr8ly/integreatly-operator/pkg/apis-products/enmasse/v1beta1"
 	modify_crs "github.com/integr8ly/integreatly-operator/test/common/modify-crs"
-	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sync"
@@ -41,58 +40,56 @@ func testAMQOnline(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
 	//testAuthenticationServiceCr(wg, t, ctx)
 	testBrokeredInfraConfigCr(wg, t, ctx)
 	testStandardInfraConfigCr(wg, t, ctx)
-	testRoleCr(wg, t, ctx)
+	//testRoleCr(wg, t, ctx)
 	//testRoleBindingCr(wg, t, ctx)
 }
 
 ////========================================================================================================
-//// enmasse rbacv1.RoleBinding
+//// enmasse rbacv1.Role
 //// There are some CR that are been skipped. I do not know where these get created
 ////========================================================================================================
 //
-//type roleBindingCr struct {
+//type roleCr struct {
 //	IntegreatlyName      string
 //	IntegreatlyNamespace string
-//	RoleRefName          string
-//	RoleRefKind          string
-//	Subjects             []roleBindingSubject
+//	Roles                []roleCrRole
 //}
 //
-//type roleBindingSubject struct {
-//	SubjectName string
-//	SubjectKind string
+//type roleCrRole struct {
+//	APIGroup  []string
+//	Resources []string
+//	Verbs     []string
 //}
 //
-//func testRoleBindingCr(wg *sync.WaitGroup, t *testing.T, ctx *TestingContext) {
-//	crList := &rbacv1.RoleBindingList{}
+//func testRoleCr(wg *sync.WaitGroup, t *testing.T, ctx *TestingContext) {
+//	crList := &rbacv1.RoleList{}
 //	listOpts := &k8sclient.ListOptions{
 //		Namespace: amqOnline,
 //	}
 //
 //	err := ctx.Client.List(goctx.TODO(), crList, listOpts)
 //	if err != nil {
-//		t.Fatal("rbacv1.RoleBinding : Failed to get a list of CR's from cluster: ", err)
+//		t.Fatal("rbacv1.Role : Failed to get a list of CR's from cluster: ", err)
 //	}
 //	var skipped []string
 //	for _, cr := range crList.Items {
-//		if cr.Name == "dedicated-admins-service-admin" {
+//		if cr.Name == "enmasse.io:service-admin" {
 //			wg.Add(1)
-//			go setUpRoleBindingCr(wg, t, ctx, cr)
-//		} else {
-//			skipped = append(skipped, cr.Name)
+//			go setUpRoleCr(wg, t, ctx, cr)
 //		}
+//		skipped = append(skipped, cr.Name)
 //	}
-//	t.Logf("rbacv1.RoleBinding : The following CR's were skipped, %s", skipped)
+//	t.Logf("rbacv1.Role : Skipping CR with name %s", skipped)
 //
 //}
 //
-//func setUpRoleBindingCr(wg *sync.WaitGroup, t *testing.T, ctx *TestingContext, cr rbacv1.RoleBinding) {
+//func setUpRoleCr(wg *sync.WaitGroup, t *testing.T, ctx *TestingContext, cr rbacv1.Role) {
 //	defer wg.Done()
-//	i := roleBindingCr{}
+//	i := roleCr{}
 //	i.runTests(t, ctx, cr)
 //}
 //
-//func (i *roleBindingCr) runTests(t *testing.T, ctx *TestingContext, cr rbacv1.RoleBinding) {
+//func (i *roleCr) runTests(t *testing.T, ctx *TestingContext, cr rbacv1.Role) {
 //	if crFieldEdit {
 //		i.modifyExistingValues(t, ctx, cr)
 //	}
@@ -104,12 +101,12 @@ func testAMQOnline(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
 //	}
 //}
 //
-//func (i *roleBindingCr) modifyExistingValues(t *testing.T, ctx *TestingContext, cr rbacv1.RoleBinding) {
+//func (i *roleCr) modifyExistingValues(t *testing.T, ctx *TestingContext, cr rbacv1.Role) {
 //	i.copyRequiredValues(cr)
-//	i.changeCRValues(&cr)
+//	i.changeCRValues(cr)
 //	err := ctx.Client.Update(goctx.TODO(), &cr)
 //	if err != nil {
-//		t.Fatal("Modify Existing CR values : Failed to update CR on cluster: ", err)
+//		t.Fatal("Modify Existing CR values : Modify Existing CR values : Failed to update CR on cluster")
 //	}
 //
 //	var results *[]modify_crs.CompareResult
@@ -119,10 +116,10 @@ func testAMQOnline(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
 //	for forceRetry {
 //		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
 //		if err != nil {
-//			t.Fatalf("Modify Existing CR values : Fail to refresh the cr")
+//			t.Fatalf("Modify Existing CR values : Modify Existing CR values : Fail to refresh the cr")
 //		}
 //
-//		t.Logf("Modify Existing CR values : %s: count = %v, revison = %s", cr.Name, count, cr.ResourceVersion)
+//		t.Logf("Modify Existing CR values : Modify Existing CR values : %s: count = %v, revison = %s", cr.Name, count, cr.ResourceVersion)
 //		_, err = i.waitReconcilingCR(ctx, cr)
 //		if err != nil {
 //			t.Fatalf("Modify Existing CR values : %s: %s:, %s", cr.Kind, cr.Name, err)
@@ -147,7 +144,7 @@ func testAMQOnline(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
 //	}
 //}
 //
-//func (i *roleBindingCr) deleteExistingValues(t *testing.T, ctx *TestingContext, cr rbacv1.RoleBinding) {
+//func (i *roleCr) deleteExistingValues(t *testing.T, ctx *TestingContext, cr rbacv1.Role) {
 //	err := ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
 //	if err != nil {
 //		t.Fatal("Deleting CR Values : Failed to refresh CR")
@@ -157,7 +154,7 @@ func testAMQOnline(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
 //	err = ctx.Client.Update(goctx.TODO(), &cr)
 //	if err != nil {
 //		t.Log(err)
-//		t.Fatal("Deleting CR Values : Failed to update CR on cluster: ", err)
+//		t.Fatal("Deleting CR Values : Failed to update CR on cluster")
 //	}
 //
 //	var results *[]modify_crs.CompareResult
@@ -195,7 +192,7 @@ func testAMQOnline(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
 //	}
 //}
 //
-//func (i *roleBindingCr) addNewValues(t *testing.T, ctx *TestingContext, cr rbacv1.RoleBinding) {
+//func (i *roleCr) addNewValues(t *testing.T, ctx *TestingContext, cr rbacv1.Role) {
 //	err := ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
 //	if err != nil {
 //		t.Fatal("Add New CR Values :  Failed to refresh CR")
@@ -220,22 +217,22 @@ func testAMQOnline(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
 //	}
 //}
 //
-//func (i *roleBindingCr) copyRequiredValues(cr rbacv1.RoleBinding) {
+//func (i *roleCr) copyRequiredValues(cr rbacv1.Role) {
 //	ant := cr.GetAnnotations()
 //	i.IntegreatlyName = ant[integreatlyName]
 //	i.IntegreatlyNamespace = ant[integreatlyNamespace]
-//	i.RoleRefKind = cr.RoleRef.Kind
-//	i.RoleRefName = cr.RoleRef.Name
-//	for _, subject := range cr.Subjects {
-//		i.Subjects = append(i.Subjects, roleBindingSubject{
-//			SubjectName: subject.Name,
-//			SubjectKind: subject.Kind,
+//
+//	for _, rule := range cr.Rules {
+//		i.Roles = append(i.Roles, roleCrRole{
+//			APIGroup:  rule.APIGroups,
+//			Resources: rule.Resources,
+//			Verbs:     rule.Verbs,
 //		})
 //	}
 //
 //}
 //
-//func (i *roleBindingCr) changeCRValues(cr *rbacv1.RoleBinding) {
+//func (i *roleCr) changeCRValues(cr rbacv1.Role) {
 //	ant := cr.GetAnnotations()
 //	if ant == nil {
 //		ant = map[string]string{}
@@ -243,18 +240,23 @@ func testAMQOnline(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
 //	ant[integreatlyName] = "Bad Value"
 //	ant[integreatlyNamespace] = "Bad Value"
 //	cr.SetAnnotations(ant)
-//	//TODO Find a Role Kind that is allowed and is not Kind: Role
-//	//cr.RoleRef.Kind = "Bad Value"
-//	// Can not change role reference
-//	//cr.RoleRef.Name = "bad-value"
-//	for index := range cr.Subjects {
-//		cr.Subjects[index].Name = "bad-value"
-//		cr.Subjects[index].Kind = "ServiceAccount"
-//		cr.Subjects[index].APIGroup = ""
+//
+//	for index, rule := range cr.Rules {
+//		for i := range rule.Resources {
+//			cr.Rules[index].Resources[i] = "Bad Value"
+//		}
+//
+//		for i := range rule.Verbs {
+//			cr.Rules[index].Verbs[i] = "Bad Value"
+//		}
+//
+//		for i := range rule.APIGroups {
+//			cr.Rules[index].APIGroups[i] = "Bad Value"
+//		}
 //	}
 //}
 //
-//func (i *roleBindingCr) waitReconcilingCR(ctx *TestingContext, cr rbacv1.RoleBinding) (done bool, err error) {
+//func (i *roleCr) waitReconcilingCR(ctx *TestingContext, cr rbacv1.Role) (done bool, err error) {
 //	resourceVersion := cr.ResourceVersion
 //	err = wait.Poll(crRetryInterval, crTimeout, func() (done bool, err error) {
 //		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
@@ -275,7 +277,7 @@ func testAMQOnline(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
 //	}
 //}
 //
-//func (i *roleBindingCr) compareValues(cr *rbacv1.RoleBinding) *[]modify_crs.CompareResult {
+//func (i *roleCr) compareValues(cr *rbacv1.Role) *[]modify_crs.CompareResult {
 //	var values []modify_crs.CompareResult
 //	ant := cr.GetAnnotations()
 //	if ant[integreatlyName] != i.IntegreatlyName {
@@ -296,25 +298,41 @@ func testAMQOnline(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
 //		})
 //	}
 //
-//	for _, subject := range cr.Subjects {
-//		err := i.compareSubjectName(subject.Name)
-//		if err != nil {
-//			values = append(values, modify_crs.CompareResult{
-//				Type:  cr.Kind,
-//				Name:  cr.Name,
-//				Key:   "subjects.[].name",
-//				Error: err.Error(),
-//			})
+//	for _, rule := range cr.Rules {
+//		for _, value := range rule.Resources {
+//			err := i.compareResources(value)
+//			if err != nil {
+//				values = append(values, modify_crs.CompareResult{
+//					Type:  cr.Kind,
+//					Name:  cr.Name,
+//					Key:   "Roles.Resources",
+//					Error: err.Error(),
+//				})
+//			}
 //		}
 //
-//		err = i.compareSubjectKind(subject.Kind)
-//		if err != nil {
-//			values = append(values, modify_crs.CompareResult{
-//				Type:  cr.Kind,
-//				Name:  cr.Name,
-//				Key:   "subjects.[].Kind",
-//				Error: err.Error(),
-//			})
+//		for _, value := range rule.Verbs {
+//			err := i.compareVerbs(value)
+//			if err != nil {
+//				values = append(values, modify_crs.CompareResult{
+//					Type:  cr.Kind,
+//					Name:  cr.Name,
+//					Key:   "Roles.Verbs",
+//					Error: err.Error(),
+//				})
+//			}
+//		}
+//
+//		for _, value := range rule.APIGroups {
+//			err := i.compareAPIGroups(value)
+//			if err != nil {
+//				values = append(values, modify_crs.CompareResult{
+//					Type:  cr.Kind,
+//					Name:  cr.Name,
+//					Key:   "Roles.APIGroup",
+//					Error: err.Error(),
+//				})
+//			}
 //		}
 //	}
 //
@@ -325,398 +343,59 @@ func testAMQOnline(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
 //	}
 //}
 //
-//func (i *roleBindingCr) compareSubjectKind(value string) error {
-//	for _, item := range i.Subjects {
-//		if value == item.SubjectKind {
-//			return nil
+//func (i *roleCr) compareAPIGroups(value string) error {
+//	for _, item := range i.Roles {
+//		for _, expected := range item.APIGroup {
+//			if value == expected {
+//				return nil
+//			}
 //		}
 //	}
-//	return fmt.Errorf("could not find %s in copied CR Subject.Kind", value)
+//	return fmt.Errorf("could not find %s in copied CR Roles.APIGroup", value)
 //}
 //
-//func (i *roleBindingCr) compareSubjectName(value string) error {
-//	for _, item := range i.Subjects {
-//		if value == item.SubjectName {
-//			return nil
+//func (i *roleCr) compareVerbs(value string) error {
+//	for _, item := range i.Roles {
+//		for _, expected := range item.Verbs {
+//			if value == expected {
+//				return nil
+//			}
 //		}
 //	}
-//	return fmt.Errorf("could not find %s in copied CR Subject.Name", value)
+//	return fmt.Errorf("could not find %s in copied CR Roles.Verbs", value)
 //}
 //
-//func (i *roleBindingCr) deleteCRValues(cr *rbacv1.RoleBinding) {
+//func (i *roleCr) compareResources(value string) error {
+//	for _, item := range i.Roles {
+//		for _, expected := range item.Resources {
+//			if value == expected {
+//				return nil
+//			}
+//		}
+//	}
+//	return fmt.Errorf("could not find %s in copied CR Roles.Resources", value)
+//}
+//
+//func (i *roleCr) deleteCRValues(cr *rbacv1.Role) {
 //	ant := cr.GetAnnotations()
 //	delete(ant, integreatlyName)
 //	delete(ant, integreatlyNamespace)
 //	cr.SetAnnotations(ant)
-//	cr.Subjects = nil
-//	//cr.RoleRef = rbacv1.RoleRef{}
+//	cr.Rules = nil
 //}
 //
-//func (i *roleBindingCr) addCRValue(cr rbacv1.RoleBinding) {
+//func (i *roleCr) addCRValue(cr rbacv1.Role) {
 //	ant := cr.GetAnnotations()
 //	ant["dummy-value"] = "dummy value"
 //	cr.SetAnnotations(ant)
 //}
 //
-//func (i *roleBindingCr) addedValuesStillExist(t *testing.T, cr rbacv1.RoleBinding) {
+//func (i *roleCr) addedValuesStillExist(t *testing.T, cr rbacv1.Role) {
 //	ant := cr.GetAnnotations()
 //	if ant["dummy-value"] != "dummy value" {
-//		t.Fatal("Add New CR Values :  Added dummy values got reset.")
+//		t.Fatal("Add New CR Values :  Added dummy values go reset.")
 //	}
 //}
-
-//========================================================================================================
-// enmasse rbacv1.Role
-// There are some CR that are been skipped. I do not know where these get created
-//========================================================================================================
-
-type roleCr struct {
-	IntegreatlyName      string
-	IntegreatlyNamespace string
-	Roles                []roleCrRole
-}
-
-type roleCrRole struct {
-	APIGroup  []string
-	Resources []string
-	Verbs     []string
-}
-
-func testRoleCr(wg *sync.WaitGroup, t *testing.T, ctx *TestingContext) {
-	crList := &rbacv1.RoleList{}
-	listOpts := &k8sclient.ListOptions{
-		Namespace: amqOnline,
-	}
-
-	err := ctx.Client.List(goctx.TODO(), crList, listOpts)
-	if err != nil {
-		t.Fatal("rbacv1.Role : Failed to get a list of CR's from cluster: ", err)
-	}
-	var skipped []string
-	for _, cr := range crList.Items {
-		if cr.Name == "enmasse.io:service-admin" {
-			wg.Add(1)
-			go setUpRoleCr(wg, t, ctx, cr)
-		}
-		skipped = append(skipped, cr.Name)
-	}
-	t.Logf("rbacv1.Role : Skipping CR with name %s", skipped)
-
-}
-
-func setUpRoleCr(wg *sync.WaitGroup, t *testing.T, ctx *TestingContext, cr rbacv1.Role) {
-	defer wg.Done()
-	i := roleCr{}
-	i.runTests(t, ctx, cr)
-}
-
-func (i *roleCr) runTests(t *testing.T, ctx *TestingContext, cr rbacv1.Role) {
-	if crFieldEdit {
-		i.modifyExistingValues(t, ctx, cr)
-	}
-	if crFieldDelete {
-		i.deleteExistingValues(t, ctx, cr)
-	}
-	if crFieldAdd {
-		i.addNewValues(t, ctx, cr)
-	}
-}
-
-func (i *roleCr) modifyExistingValues(t *testing.T, ctx *TestingContext, cr rbacv1.Role) {
-	i.copyRequiredValues(cr)
-	i.changeCRValues(cr)
-	err := ctx.Client.Update(goctx.TODO(), &cr)
-	if err != nil {
-		t.Fatal("Modify Existing CR values : Modify Existing CR values : Failed to update CR on cluster")
-	}
-
-	var results *[]modify_crs.CompareResult
-	count := 3
-	forceRetry := true
-	// Force Retry is required to remove flaky test results after random updates
-	for forceRetry {
-		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-		if err != nil {
-			t.Fatalf("Modify Existing CR values : Modify Existing CR values : Fail to refresh the cr")
-		}
-
-		t.Logf("Modify Existing CR values : Modify Existing CR values : %s: count = %v, revison = %s", cr.Name, count, cr.ResourceVersion)
-		_, err = i.waitReconcilingCR(ctx, cr)
-		if err != nil {
-			t.Fatalf("Modify Existing CR values : %s: %s:, %s", cr.Kind, cr.Name, err)
-		}
-		results = i.compareValues(&cr)
-
-		if results == nil {
-			forceRetry = false
-			count -= 1
-		}
-		count -= 1
-		if count < 0 {
-			forceRetry = false
-		}
-	}
-
-	if results != nil {
-		for _, result := range *results {
-			t.Logf("Modify Existing CR values : %s: %s: %s: %s", result.Type, result.Name, result.Key, result.Error)
-		}
-		t.Fatal("Modify Existing CR values : Failed to reset the CR values")
-	}
-}
-
-func (i *roleCr) deleteExistingValues(t *testing.T, ctx *TestingContext, cr rbacv1.Role) {
-	err := ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-	if err != nil {
-		t.Fatal("Deleting CR Values : Failed to refresh CR")
-	}
-	i.copyRequiredValues(cr)
-	i.deleteCRValues(&cr)
-	err = ctx.Client.Update(goctx.TODO(), &cr)
-	if err != nil {
-		t.Log(err)
-		t.Fatal("Deleting CR Values : Failed to update CR on cluster")
-	}
-
-	var results *[]modify_crs.CompareResult
-	count := 3
-	forceRetry := true
-	// Force Retry is required to remove flaky test results after random updates
-	for forceRetry {
-		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-		if err != nil {
-			t.Fatalf("Deleting CR Values : Fail to refresh the cr")
-		}
-
-		t.Logf("Deleting CR Values : %s: count = %v, revison = %s", cr.Name, count, cr.ResourceVersion)
-		_, err = i.waitReconcilingCR(ctx, cr)
-		if err != nil {
-			t.Fatalf("Deleting CR Values : %s: %s:, %s", cr.Kind, cr.Name, err)
-		}
-		results = i.compareValues(&cr)
-
-		if results == nil {
-			forceRetry = false
-			count -= 1
-		}
-		count -= 1
-		if count < 0 {
-			forceRetry = false
-		}
-	}
-
-	if results != nil {
-		for _, result := range *results {
-			t.Logf("Deleting CR Values : %s: %s: %s: %s", result.Type, result.Name, result.Key, result.Error)
-		}
-		t.Fatal("Deleting CR Values : Failed to reset the CR values")
-	}
-}
-
-func (i *roleCr) addNewValues(t *testing.T, ctx *TestingContext, cr rbacv1.Role) {
-	err := ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-	if err != nil {
-		t.Fatal("Add New CR Values :  Failed to refresh CR")
-	}
-	i.addCRValue(cr)
-	err = ctx.Client.Update(goctx.TODO(), &cr)
-	if err != nil {
-		t.Fatal("Add New CR Values :  Failed to update CR on cluster")
-	}
-
-	// Refresh CR to get up-to-date version number
-	err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-	if err != nil {
-		t.Fatalf("Add New CR Values :  Fail to refresh the cr")
-	}
-
-	_, err = i.waitReconcilingCR(ctx, cr)
-	if err != nil && err.Error() != "timed out waiting for the condition" {
-		t.Fatal(err)
-	} else {
-		i.addedValuesStillExist(t, cr)
-	}
-}
-
-func (i *roleCr) copyRequiredValues(cr rbacv1.Role) {
-	ant := cr.GetAnnotations()
-	i.IntegreatlyName = ant[integreatlyName]
-	i.IntegreatlyNamespace = ant[integreatlyNamespace]
-
-	for _, rule := range cr.Rules {
-		i.Roles = append(i.Roles, roleCrRole{
-			APIGroup:  rule.APIGroups,
-			Resources: rule.Resources,
-			Verbs:     rule.Verbs,
-		})
-	}
-
-}
-
-func (i *roleCr) changeCRValues(cr rbacv1.Role) {
-	ant := cr.GetAnnotations()
-	if ant == nil {
-		ant = map[string]string{}
-	}
-	ant[integreatlyName] = "Bad Value"
-	ant[integreatlyNamespace] = "Bad Value"
-	cr.SetAnnotations(ant)
-
-	for index, rule := range cr.Rules {
-		for i := range rule.Resources {
-			cr.Rules[index].Resources[i] = "Bad Value"
-		}
-
-		for i := range rule.Verbs {
-			cr.Rules[index].Verbs[i] = "Bad Value"
-		}
-
-		for i := range rule.APIGroups {
-			cr.Rules[index].APIGroups[i] = "Bad Value"
-		}
-	}
-}
-
-func (i *roleCr) waitReconcilingCR(ctx *TestingContext, cr rbacv1.Role) (done bool, err error) {
-	resourceVersion := cr.ResourceVersion
-	err = wait.Poll(crRetryInterval, crTimeout, func() (done bool, err error) {
-		err = ctx.Client.Get(goctx.TODO(), k8sclient.ObjectKey{Name: cr.Name, Namespace: cr.Namespace}, &cr)
-		if err != nil {
-			return false, err
-		}
-
-		if resourceVersion != cr.ResourceVersion {
-			return true, nil
-		} else {
-			return false, nil
-		}
-	})
-	if err != nil {
-		return false, err
-	} else {
-		return true, nil
-	}
-}
-
-func (i *roleCr) compareValues(cr *rbacv1.Role) *[]modify_crs.CompareResult {
-	var values []modify_crs.CompareResult
-	ant := cr.GetAnnotations()
-	if ant[integreatlyName] != i.IntegreatlyName {
-		values = append(values, modify_crs.CompareResult{
-			Type:  cr.Kind,
-			Name:  cr.Name,
-			Key:   "metadata.annotations.integreatly-name",
-			Error: fmt.Sprintf("%s is not equal to expected %s", ant[integreatlyName], i.IntegreatlyName),
-		})
-	}
-
-	if ant[integreatlyNamespace] != i.IntegreatlyNamespace {
-		values = append(values, modify_crs.CompareResult{
-			Type:  cr.Kind,
-			Name:  cr.Name,
-			Key:   "metadata.annotations.integreatly-namespace",
-			Error: fmt.Sprintf("%s is not equal to expected %s", ant[integreatlyNamespace], i.IntegreatlyNamespace),
-		})
-	}
-
-	for _, rule := range cr.Rules {
-		for _, value := range rule.Resources {
-			err := i.compareResources(value)
-			if err != nil {
-				values = append(values, modify_crs.CompareResult{
-					Type:  cr.Kind,
-					Name:  cr.Name,
-					Key:   "Roles.Resources",
-					Error: err.Error(),
-				})
-			}
-		}
-
-		for _, value := range rule.Verbs {
-			err := i.compareVerbs(value)
-			if err != nil {
-				values = append(values, modify_crs.CompareResult{
-					Type:  cr.Kind,
-					Name:  cr.Name,
-					Key:   "Roles.Verbs",
-					Error: err.Error(),
-				})
-			}
-		}
-
-		for _, value := range rule.APIGroups {
-			err := i.compareAPIGroups(value)
-			if err != nil {
-				values = append(values, modify_crs.CompareResult{
-					Type:  cr.Kind,
-					Name:  cr.Name,
-					Key:   "Roles.APIGroup",
-					Error: err.Error(),
-				})
-			}
-		}
-	}
-
-	if len(values) > 0 {
-		return &values
-	} else {
-		return nil
-	}
-}
-
-func (i *roleCr) compareAPIGroups(value string) error {
-	for _, item := range i.Roles {
-		for _, expected := range item.APIGroup {
-			if value == expected {
-				return nil
-			}
-		}
-	}
-	return fmt.Errorf("could not find %s in copied CR Roles.APIGroup", value)
-}
-
-func (i *roleCr) compareVerbs(value string) error {
-	for _, item := range i.Roles {
-		for _, expected := range item.Verbs {
-			if value == expected {
-				return nil
-			}
-		}
-	}
-	return fmt.Errorf("could not find %s in copied CR Roles.Verbs", value)
-}
-
-func (i *roleCr) compareResources(value string) error {
-	for _, item := range i.Roles {
-		for _, expected := range item.Resources {
-			if value == expected {
-				return nil
-			}
-		}
-	}
-	return fmt.Errorf("could not find %s in copied CR Roles.Resources", value)
-}
-
-func (i *roleCr) deleteCRValues(cr *rbacv1.Role) {
-	ant := cr.GetAnnotations()
-	delete(ant, integreatlyName)
-	delete(ant, integreatlyNamespace)
-	cr.SetAnnotations(ant)
-	cr.Rules = nil
-}
-
-func (i *roleCr) addCRValue(cr rbacv1.Role) {
-	ant := cr.GetAnnotations()
-	ant["dummy-value"] = "dummy value"
-	cr.SetAnnotations(ant)
-}
-
-func (i *roleCr) addedValuesStillExist(t *testing.T, cr rbacv1.Role) {
-	ant := cr.GetAnnotations()
-	if ant["dummy-value"] != "dummy value" {
-		t.Fatal("Add New CR Values :  Added dummy values go reset.")
-	}
-}
 
 //========================================================================================================
 // enmasse enmassev1beta1. StandardInfraConfig

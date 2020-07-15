@@ -9,28 +9,10 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"strings"
 	"sync"
 	"testing"
 )
-
-//========================================================================================================
-// Put down notes
-//========================================================================================================
-// - There is an issue with running as go routines trying to write
-// - authenticationService checks seem to be given a time out failure on the second cr.
-// - All the types that are still in the crs_modifided.go still need to be moved here
-// - check the jira ticket for changes
-// - insure all types that are in the test case is covered.
-// - make a list of types that test cover
-// - normal cr check takes ~5 mins
-// - long cr check around ~10 mins
-// - See the format the Brian made https://github.com/briangallagher/integreatly-operator/blob/INTLY-6123-jim/test/common/crs_modified_brian.go
-// - Check his function names
-// - How the checking that data changed is handled
-// - once all the crs that are in the crs_modifided.go have been converted to this new style that file can eb removed
-//func compileBrake()  {
-//	compile brake
-//}
 
 //========================================================================================================
 // Setting up the test
@@ -39,9 +21,10 @@ import (
 func TestResetCRs(t *testing.T, ctx *TestingContext) {
 	var wg sync.WaitGroup
 	//authenticationServiceTest(t, ctx, &wg) // Broken
-	addressSpacePlanTest(t, ctx, &wg)
-	addressPlanTest(t, ctx, &wg)
-	roleBindingTest(t, ctx, &wg)
+	//addressSpacePlanTest(t, ctx, &wg)
+	//addressPlanTest(t, ctx, &wg)
+	//roleBindingTest(t, ctx, &wg)
+	roleTest(t, ctx, &wg)
 	wg.Wait()
 }
 
@@ -170,6 +153,42 @@ func roleBindingTestSetup(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup,
 }
 
 //========================================================================================================
+// enmasse rbacv1.Role
+//========================================================================================================
+
+func roleTest(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
+	rbl := &rbacv1.RoleList{}
+	err := ctx.Client.List(goctx.TODO(), rbl, amq_online.ListOpts)
+	if err != nil {
+		t.Fatal("Role : Failed to get a list of CR's from cluster")
+	}
+
+	var crNames []string
+	var skippedCrs []string
+	for _, cr := range rbl.Items {
+		if strings.Contains(cr.Name, "amq-online") || cr.Name == "rhmi-registry-cs-configmap-reader" {
+			skippedCrs = append(skippedCrs, cr.Name)
+		} else {
+			wg.Add(1)
+			crNames = append(crNames, cr.Name)
+			go roleTestSetup(t, ctx, wg, cr)
+		}
+	}
+	t.Logf("rbacv1.Role CRs : %s", crNames)
+	t.Logf("Skipped rbacv1.Role CRs : %s", skippedCrs)
+
+}
+
+func roleTestSetup(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup, cr rbacv1.Role) {
+	defer wg.Done()
+	rb := amq_online.RoleReference{}
+	rbcr := amq_online.RoleCrWrapper{&cr}
+	roleBindingContainer := &modify_crs.Container{}
+	roleBindingContainer.Put(rbcr)
+	runCrTest(t, ctx, &rb, roleBindingContainer)
+}
+
+//========================================================================================================
 // generic functions
 //========================================================================================================
 
@@ -186,6 +205,9 @@ func getCR(intContainer *modify_crs.Container, rt modify_crs.ResourceType) (modi
 		return cr, ok
 	case amq_online.Rbacv1RoleBinding:
 		cr, ok := intContainer.Get().(amq_online.RoleBindingCrWrapper)
+		return cr, ok
+	case amq_online.Rbacv1Role:
+		cr, ok := intContainer.Get().(amq_online.RoleCrWrapper)
 		return cr, ok
 	default:
 		return nil, false
@@ -373,6 +395,9 @@ func AddDummyCRValues(t *testing.T, rt modify_crs.ResourceType, intContainer *mo
 		t.Fatalf("%s : Unable to read enmasse.AddressSpacePlanReference from intContainer", phase)
 	}
 	ant := cr.GetAnnotations()
+	if ant == nil {
+		ant = map[string]string{}
+	}
 	ant["dummy-value"] = "dummy value"
 	cr.SetAnnotations(ant)
 
