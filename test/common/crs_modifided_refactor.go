@@ -26,7 +26,8 @@ func TestResetCRs(t *testing.T, ctx *TestingContext) {
 	//addressPlanTest(t, ctx, &wg)
 	//roleBindingTest(t, ctx, &wg)
 	//roleTest(t, ctx, &wg)
-	standardInfraConfigTest(t, ctx, &wg)
+	//standardInfraConfigTest(t, ctx, &wg)
+	brokeredInfraConfigTest(t, ctx, &wg)
 	wg.Wait()
 }
 
@@ -198,7 +199,7 @@ func standardInfraConfigTest(t *testing.T, ctx *TestingContext, wg *sync.WaitGro
 	sicl := &v1beta1.StandardInfraConfigList{}
 	err := ctx.Client.List(goctx.TODO(), sicl, amq_online.ListOpts)
 	if err != nil {
-		t.Fatal("Role : Failed to get a list of CR's from cluster")
+		t.Fatal("StandardInfraConfig : Failed to get a list of CR's from cluster")
 	}
 
 	var crNames []string
@@ -207,7 +208,7 @@ func standardInfraConfigTest(t *testing.T, ctx *TestingContext, wg *sync.WaitGro
 		crNames = append(crNames, cr.Name)
 		go standardInfraConfigTestSetup(t, ctx, wg, cr)
 	}
-	t.Logf("rbacv1.Role CRs : %s", crNames)
+	t.Logf("StandardInfraConfig CRs : %s", crNames)
 
 }
 
@@ -218,6 +219,36 @@ func standardInfraConfigTestSetup(t *testing.T, ctx *TestingContext, wg *sync.Wa
 	standardInfraConfigContainer := &modify_crs.Container{}
 	standardInfraConfigContainer.Put(siccr)
 	runCrTest(t, ctx, &sic, standardInfraConfigContainer)
+}
+
+//========================================================================================================
+// enmasse BrokeredInfraConfig
+//========================================================================================================
+
+func brokeredInfraConfigTest(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup) {
+	bicl := &v1beta1.BrokeredInfraConfigList{}
+	err := ctx.Client.List(goctx.TODO(), bicl, amq_online.ListOpts)
+	if err != nil {
+		t.Fatal("BrokeredInfraConfig : Failed to get a list of CR's from cluster")
+	}
+
+	var crNames []string
+	for _, cr := range bicl.Items {
+		wg.Add(1)
+		crNames = append(crNames, cr.Name)
+		go brokeredInfraConfigTestSetup(t, ctx, wg, cr)
+	}
+	t.Logf("BrokeredInfraConfig CRs : %s", crNames)
+
+}
+
+func brokeredInfraConfigTestSetup(t *testing.T, ctx *TestingContext, wg *sync.WaitGroup, cr v1beta1.BrokeredInfraConfig) {
+	defer wg.Done()
+	bic := amq_online.BrokeredInfraConfigReference{}
+	biccr := amq_online.BrokeredInfraConfigCrWrapper{&cr}
+	brokeredInfraConfigContainer := &modify_crs.Container{}
+	brokeredInfraConfigContainer.Put(biccr)
+	runCrTest(t, ctx, &bic, brokeredInfraConfigContainer)
 }
 
 //========================================================================================================
@@ -243,6 +274,9 @@ func getCR(intContainer *modify_crs.Container, rt modify_crs.ResourceType) (modi
 		return cr, ok
 	case amq_online.EnmasseStandardInfraConfig:
 		cr, ok := intContainer.Get().(amq_online.StandardInfraConfigCrWrapper)
+		return cr, ok
+	case amq_online.EnmasseBrokeredInfraConfig:
+		cr, ok := intContainer.Get().(amq_online.BrokeredInfraConfigCrWrapper)
 		return cr, ok
 	default:
 		return nil, false
