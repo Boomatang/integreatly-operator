@@ -1,6 +1,7 @@
 package common
 
 import (
+	goctx "context"
 	"fmt"
 	"k8s.io/apimachinery/pkg/types"
 	"testing"
@@ -8,7 +9,10 @@ import (
 )
 
 const (
-	local_delay = (1 * time.Hour) + (15 * time.Minute)
+	//local_delay = (1 * time.Hour) + (15 * time.Minute)
+	local_delay         = 20 * time.Second
+	local_user          = "customer-admin01"
+	local_user_password = "Password1"
 )
 
 type a struct {
@@ -74,17 +78,30 @@ var (
 )
 
 func TestWorkINProgress(t *testing.T, ctx *TestingContext) {
-	defer tear_down(ctx, t)
-	setup(ctx, t)
+	//defer tear_down(ctx, t)
+	//err := setup(ctx, t)
+	//if err != nil {
+	//	t.Fatalf("error during test set up: %s", err)
+	//}
 
 	t.Log("2 Check the dashboard Critical SLO summary after some time (~20min)")
+
+	grafanaRootHostname, err := getGrafanaRoute(ctx.Client)
+	if err != nil {
+		t.Fatal("failed to get grafana route", err)
+	}
+	t.Logf(grafanaRootHostname)
 
 	time.Sleep(local_delay)
 
 	t.Fail()
 }
 
-func setup(ctx *TestingContext, t *testing.T) {
+func setup(ctx *TestingContext, t *testing.T) (err error) {
+	if err := createTestingIDP(t, goctx.TODO(), ctx.Client, ctx.KubeConfig, ctx.SelfSignedCerts); err != nil {
+		return fmt.Errorf("error while creating testing idp: %v", err)
+	}
+
 	for _, space := range local_namespaces {
 		scale(ctx, t, 0, space.ResourceName, space.NameSpace, space.Resource, space.Kind, space.ApiVersion, space.Uri)
 	}
@@ -94,6 +111,7 @@ func setup(ctx *TestingContext, t *testing.T) {
 	for _, pod := range local_product_pods {
 		scale(ctx, t, 0, pod.ResourceName, pod.NameSpace, pod.Resource, pod.Kind, pod.ApiVersion, pod.Uri)
 	}
+	return nil
 }
 
 func tear_down(ctx *TestingContext, t *testing.T) {
